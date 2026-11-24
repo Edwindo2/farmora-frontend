@@ -6,7 +6,7 @@ import Social from './Social'
 import { useSite, telHref } from '../site'
 
 const COLUMNS = [
-  ['Quick Links', [['Home', '/'], ['About Us', '/#about'], ['Our Products', '/shop'], ['Become a Distributor', '/?quote=distributor#contact'], ['My Orders', '/account']]],
+  ['Quick Links', [['Home', '/'], ['About Us', '/#about'], ['Our Products', '/shop'], ['Become a Distributor', '/register?type=distributor'], ['My Orders', '/account']]],
   ['Our Services', [['Request Bulk Quote', '/?quote=wholesale#contact'], ['Export Quotation', '/?quote=export#contact'], ['Shipping & Logistics', '/#faq'], ['FAQs', '/#faq'], ['Contact Us', '/#contact']]],
 ]
 

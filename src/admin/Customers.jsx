@@ -8,6 +8,7 @@ import { date, btn } from './ui'
 const TYPE = {
   individual: 'bg-ink/5 text-muted ring-ink/10',
   wholesale: 'bg-amber-50 text-amber-800 ring-amber-200 dark:bg-amber-400/10 dark:text-amber-300 dark:ring-amber-400/25',
+  distributor: 'bg-emerald-50 text-emerald-800 ring-emerald-200 dark:bg-emerald-400/10 dark:text-emerald-300 dark:ring-emerald-400/25',
   international: 'bg-sky-50 text-sky-800 ring-sky-200 dark:bg-sky-400/10 dark:text-sky-300 dark:ring-sky-400/25',
 }
 
@@ -31,18 +32,19 @@ export default function Customers() {
       <div>
         <p className="text-[11px] uppercase tracking-[0.28em] text-lime">Customers</p>
         <h1 className="mt-2 text-[28px] font-semibold tracking-[-0.01em]">Buyers</h1>
-        <p className="mt-2 max-w-[42em] text-[14px] text-muted">Approve wholesale accounts here. Approved wholesale buyers see the wholesale prices you set on the Products page, and are emailed when you decide.</p>
+        <p className="mt-2 max-w-[42em] text-[14px] text-muted">Approve distributor and wholesale applications here. Approved distributors see the distributor prices and approved wholesale buyers see the wholesale prices you set on the Products page. They are emailed when you decide.</p>
       </div>
 
       {pending.length > 0 && (
         <section className="rounded-2xl border border-amber-400/40 bg-amber-400/10 p-5">
-          <h2 className="flex items-center gap-2 text-[15px] font-semibold"><Hourglass className="h-4 w-4" /> {pending.length} wholesale request{pending.length > 1 ? 's' : ''} waiting</h2>
+          <h2 className="flex items-center gap-2 text-[15px] font-semibold"><Hourglass className="h-4 w-4" /> {pending.length} application{pending.length > 1 ? 's' : ''} waiting</h2>
           <ul className="mt-3 divide-y divide-ink/10">
             {pending.map(c => (
               <li key={c.id} className="flex flex-wrap items-center gap-3 py-3">
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium">{c.company || c.name} <span className="font-normal text-faint">· {c.name}</span></p>
+                  <p className="font-medium">{c.company || c.name} <span className="font-normal text-faint">· {c.name}</span> <span className={`ml-1 inline-flex rounded-full px-2 py-0.5 text-[10.5px] font-medium capitalize ring-1 ring-inset ${TYPE[c.accountType] || TYPE.individual}`}>{c.accountType}</span></p>
                   <p className="text-[12.5px] text-muted">{c.email} · {c.phone} · {c.country}</p>
+                  {c.accountType === 'distributor' && <p className="text-[12.5px] text-muted">Covers: {c.area || '-'}{c.monthlyVolume ? ` · Volume: ${c.monthlyVolume}` : ''}</p>}
                 </div>
                 <button disabled={busy === c.id} onClick={() => decide(c, 'approved')} className={`${btn} bg-lime text-night hover:brightness-95`}><Check className="h-4 w-4" /> Approve</button>
                 <button disabled={busy === c.id} onClick={() => decide(c, 'rejected')} className={`${btn} border border-ink/15 hover:border-red-500 hover:text-red-500`}><X className="h-4 w-4" /> Decline</button>
@@ -53,7 +55,7 @@ export default function Customers() {
       )}
 
       <div className="flex flex-wrap gap-2">
-        {[['all', 'All'], ['individual', 'Individual'], ['wholesale', 'Wholesale'], ['international', 'International'], ['pending', 'Pending approval']].map(([v, l]) => (
+        {[['all', 'All'], ['distributor', 'Distributors'], ['wholesale', 'Wholesale'], ['international', 'International'], ['pending', 'Pending approval']].map(([v, l]) => (
           <button key={v} onClick={() => setFilter(v)} className={`rounded-full px-3.5 py-1.5 text-[12.5px] ${filter === v ? 'bg-lime text-night' : 'border border-ink/15 bg-paper text-muted hover:text-ink'}`}>{l}</button>
         ))}
       </div>
@@ -72,7 +74,8 @@ export default function Customers() {
                 <td className="px-5 py-3.5">{c.email}<p className="text-[12px] text-faint">{c.phone}</p></td>
                 <td className="px-5 py-3.5">
                   <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-medium capitalize ring-1 ring-inset ${TYPE[c.accountType] || TYPE.individual}`}>{c.accountType}</span>
-                  {c.wholesaleStatus !== 'none' && <p className="mt-1 text-[11.5px] capitalize text-faint">Wholesale: {c.wholesaleStatus}</p>}
+                  {c.wholesaleStatus !== 'none' && <p className="mt-1 text-[11.5px] capitalize text-faint">{c.wholesaleStatus}</p>}
+                  {c.accountType === 'distributor' && c.area && <p className="mt-1 text-[11.5px] text-faint">Covers: {c.area}</p>}
                   {!c.registered && <p className="mt-1 text-[11.5px] text-faint">Guest (no account)</p>}
                 </td>
                 <td className="px-5 py-3.5">{c.country}</td>
@@ -80,8 +83,8 @@ export default function Customers() {
                 <td className="px-5 py-3.5 text-faint">{date(c.createdAt)}</td>
                 <td className="px-5 py-3.5 text-right">
                   {c.wholesaleStatus === 'approved'
-                    ? <button disabled={busy === c.id} onClick={() => decide(c, 'none')} className="text-[12.5px] text-muted hover:text-red-500">Remove wholesale</button>
-                    : c.wholesaleStatus !== 'pending' && c.registered && <button disabled={busy === c.id} onClick={() => decide(c, 'approved')} className="text-[12.5px] text-lime hover:underline">Make wholesale</button>}
+                    ? <button disabled={busy === c.id} onClick={() => decide(c, 'none')} className="text-[12.5px] text-muted hover:text-red-500">{c.accountType === 'distributor' ? 'Remove approval' : 'Remove wholesale'}</button>
+                    : c.wholesaleStatus !== 'pending' && c.registered && <button disabled={busy === c.id} onClick={() => decide(c, 'approved')} className="text-[12.5px] text-lime hover:underline">{c.accountType === 'distributor' ? 'Approve distributor' : 'Make wholesale'}</button>}
                 </td>
               </tr>
             ))}

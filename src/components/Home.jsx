@@ -5,12 +5,13 @@ import { useCart } from '../cart'
 import { WishButton } from '../wishlist'
 import { useSite } from '../site'
 import { quoteHref } from '../lib'
+import { TierPrice } from './Shop'
 
 // Home page sections, laid out like the Farmora guide design.
 
 const QUOTE = quoteHref({ type: 'export' })
 const BULK = quoteHref()
-const DISTRIBUTOR = quoteHref({ type: 'distributor' })
+const DISTRIBUTOR = '/register?type=distributor' // sign-up with the Distributor section open
 
 /* ---------- hero ---------- */
 export function HomeHero() {
@@ -118,7 +119,7 @@ function PackCard({ product, size, index }) {
       </Link>
       <h3 className="mt-3 font-display text-[17px] font-bold text-ink">{size.label.replace(/\blitres?\b/i, m => m[0].toUpperCase() + m.slice(1))}</h3>
       <p className="text-[12.5px] text-muted">{product.name}</p>
-      <p className="mb-3 mt-1 text-[12.5px] font-medium text-grass">Bulk price on request</p>
+      <TierPrice size={size} className="mb-3 mt-1 text-[12.5px] font-medium text-grass" />
       <Link
         to={quoteHref({ type: mode === 'international' ? 'export' : 'wholesale', product: product.name, size: size.label })}
         className="btn-micro mt-auto inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-grass px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-grass-deep sm:px-5"

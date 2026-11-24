@@ -10,6 +10,7 @@ function AuthPage({ initial }) {
   const [params] = useSearchParams()
   const next = params.get('next')?.startsWith('/') ? params.get('next') : '/account'
   useEffect(() => { if (me) nav(next, { replace: true }) }, [me, next, nav])
+  useEffect(() => { window.scrollTo(0, 0) }, [])
   useEffect(() => {
     document.title = `${initial === 'register' ? 'Create an account' : 'Sign in'} · Farmora`
     return () => { document.title = 'Farmora — Palm Oil from Nigeria, Delivered Anywhere' }

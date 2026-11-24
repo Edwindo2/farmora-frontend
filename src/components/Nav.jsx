@@ -117,7 +117,7 @@ function useMenu() {
     ['Home', '/', null, Home],
     ['About Us', null, [['Our story', '/#about'], ['Why choose Farmora', '/#why'], ['Contact us', '/#contact']]],
     ['Our Products', null, [...products.slice(0, 6).map(p => [p.name, `/product/${p.id}`]), ['All products', '/shop']]],
-    ['Distributors', null, [['Become a distributor', '/?quote=distributor#contact'], ['Request bulk quote', '/?quote=wholesale#contact'], ['For local buyers', '/#buyers'], ['Track my orders', '/account']]],
+    ['Distributors', null, [['Become a distributor', '/register?type=distributor'], ['Request bulk quote', '/?quote=wholesale#contact'], ['For local buyers', '/#buyers'], ['Track my orders', '/account']]],
     ['Global Trade', null, [['For international buyers', '/#buyers'], ['Request export quotation', '/?quote=export#contact']]],
     ['FAQs', '/#faq'],
     ['Contact Us', '/#contact'],

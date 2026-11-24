@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Mail, Lock, Eye, EyeOff, User, Phone, Building2, ArrowRight, ArrowLeft, Package, LogOut, RotateCcw, Truck, MapPin,
   CheckCircle2, Loader2, LayoutDashboard, ListOrdered, History, UserCog, Clock, CircleDot, KeyRound,
-  Globe2, Store, FileText, Heart, ShoppingBag, Printer, BadgeCheck, Hourglass,
+  Globe2, Store, Handshake, FileText, Heart, ShoppingBag, Printer, BadgeCheck, Hourglass,
 } from 'lucide-react'
 import Nav from '../components/Nav'
 import Footer from '../components/Footer'
@@ -41,6 +41,7 @@ export function useMe() {
 
 const ACCOUNT_TYPES = [
   ['wholesale', 'Wholesale', 'Bulk buyers in Nigeria', Store],
+  ['distributor', 'Distributor', 'Resell Farmora oil', Handshake],
   ['international', 'International', 'Bulk buyers abroad', Globe2],
 ]
 const COUNTRIES = ['Nigeria', 'Ghana', 'Benin', 'Togo', 'Cameroon', 'Côte d’Ivoire', 'Senegal', 'South Africa', 'Kenya', 'United Kingdom', 'Ireland', 'United States', 'Canada', 'Germany', 'France', 'Netherlands', 'Belgium', 'Italy', 'Spain', 'United Arab Emirates', 'Saudi Arabia', 'Qatar', 'China', 'India', 'Malaysia', 'Australia']
@@ -101,12 +102,17 @@ function Errors({ list }) {
  * Sign in / create account / email link. Used on the account page and inside the order form.
  * onDone() runs after a successful sign-in or registration.
  */
+const TYPE_IDS = ['wholesale', 'distributor', 'international']
+
 export function AuthForms({ onDone: done, initial = 'login', compact = false }) {
+  // /register?type=distributor opens the form with that account type picked
+  const [params] = useSearchParams()
+  const startType = TYPE_IDS.includes(params.get('type')) ? params.get('type') : 'wholesale'
   const { reload } = useAuth()
   const onDone = async () => { await reload(); done?.() }
   const [tab, setTab] = useState(initial)
   useEffect(() => { setTab(initial) }, [initial])
-  const [f, setF] = useState({ name: '', email: '', phone: '', company: '', country: 'Nigeria', accountType: 'wholesale', password: '', confirm: '' })
+  const [f, setF] = useState({ name: '', email: '', phone: '', company: '', country: 'Nigeria', accountType: startType, area: '', monthlyVolume: '', password: '', confirm: '' })
   const [errors, setErrors] = useState([])
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState(null) // { title, text }
@@ -122,7 +128,8 @@ export function AuthForms({ onDone: done, initial = 'login', compact = false }) 
       } else if (tab === 'register') {
         const bad = passwordErrors(f.password, f.confirm)
         if (bad.length) { setErrors(bad); return }
-        const { confirm: _confirm, ...body } = f
+        const { confirm: _confirm, area, monthlyVolume, ...rest } = f
+        const body = f.accountType === 'distributor' ? { ...rest, area, monthlyVolume } : rest
         const r = await accountApi('/register', { method: 'POST', body })
         if (r.verify) setNotice({ title: 'Check your email', text: `You've ordered with ${f.email} before. We've sent a link to confirm it's you. Open it to finish creating your account and see all your orders.` })
         else onDone()
@@ -161,7 +168,7 @@ export function AuthForms({ onDone: done, initial = 'login', compact = false }) 
       <form onSubmit={submit} className="space-y-3.5">
         {tab === 'register' && (
           <>
-            <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Account type">
+            <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Account type">
               {ACCOUNT_TYPES.map(([v, l, d, Icon]) => (
                 <button type="button" key={v} role="radio" aria-checked={f.accountType === v}
                   onClick={() => setF({ ...f, accountType: v, country: v === 'international' ? (f.country === 'Nigeria' ? '' : f.country) : (f.country || 'Nigeria') })}
@@ -173,8 +180,14 @@ export function AuthForms({ onDone: done, initial = 'login', compact = false }) 
               ))}
             </div>
             {f.accountType === 'wholesale' && <p className="rounded-lg bg-sun/15 px-3 py-2 text-[12.5px] text-ink">We supply in bulk only. Our team checks new wholesale accounts and will contact you with prices.</p>}
+            {f.accountType === 'distributor' && <p className="rounded-lg bg-grass/10 px-3 py-2 text-[12.5px] text-ink"><b>Become a Farmora distributor.</b> We supply you at special distributor prices and you resell to retailers and customers in your area. Our team reviews every application; once approved, your distributor prices appear when you sign in.</p>}
+            {f.accountType === 'international' && <p className="rounded-lg bg-sun/15 px-3 py-2 text-[12.5px] text-ink">For bulk buyers outside Nigeria. Request export quotations with shipping to your port.</p>}
             <Field icon={User} placeholder="Your full name" value={f.name} onChange={set('name')} autoComplete="name" required />
-            {<Field icon={Building2} placeholder={f.accountType === 'wholesale' ? 'Business / company name' : 'Company name (optional)'} value={f.company} onChange={set('company')} autoComplete="organization" required={f.accountType === 'wholesale'} />}
+            <Field icon={Building2} placeholder={f.accountType === 'international' ? 'Company name (optional)' : 'Business / company name'} value={f.company} onChange={set('company')} autoComplete="organization" required={f.accountType !== 'international'} />
+            {f.accountType === 'distributor' && <>
+              <Field icon={MapPin} placeholder="States / areas you will cover" value={f.area} onChange={set('area')} required />
+              <Field icon={Package} placeholder="Expected monthly volume, e.g. 50 jerrycans (optional)" value={f.monthlyVolume} onChange={set('monthlyVolume')} />
+            </>}
             <Field icon={Phone} type="tel" placeholder="Phone / WhatsApp" value={f.phone} onChange={set('phone')} autoComplete="tel" required />
             <label className={inputBox}>
               <Globe2 className="h-[18px] w-[18px] shrink-0 text-faint" strokeWidth={1.7} />
@@ -213,13 +226,17 @@ export function Shell({ children }) {
 }
 
 export function SignInPage({ onDone, initial = 'login' }) {
+  const [params] = useSearchParams()
+  const distributor = params.get('type') === 'distributor'
   return (
     <div className="mx-auto grid max-w-6xl items-center gap-10 px-5 py-14 lg:grid-cols-2 lg:py-20">
       <div className="hidden lg:block">
         <p className="text-[12px] font-semibold uppercase tracking-[0.2em] text-grass">Your Farmora account</p>
-        <h1 className="mt-3 font-display text-[44px] font-extrabold leading-[1.05] text-ink">Bulk orders, tracked <span className="text-ruby">in one place.</span></h1>
+        <h1 className="mt-3 font-display text-[44px] font-extrabold leading-[1.05] text-ink">{distributor ? <>Become a Farmora <span className="text-ruby">distributor.</span></> : <>Bulk orders, tracked <span className="text-ruby">in one place.</span></>}</h1>
         <ul className="mt-8 space-y-3 text-[15px] text-ink">
-          {['See every order and its status', 'Follow deliveries with live tracking', 'Full history of every tracking update', 'Invoices for every bulk order'].map(t => (
+          {(distributor
+            ? ['Special distributor prices on every pack size', 'Reliable supply to resell in your area', 'Dedicated support from our sales team', 'Track your orders and invoices online']
+            : ['See every order and its status', 'Follow deliveries with live tracking', 'Full history of every tracking update', 'Invoices for every bulk order']).map(t => (
             <li key={t} className="flex items-center gap-3"><CheckCircle2 className="h-5 w-5 fill-grass text-white" />{t}</li>
           ))}
         </ul>
@@ -342,6 +359,12 @@ const TILES = [
 ]
 
 function WholesaleBanner({ me, go }) {
+  if (me.accountType === 'distributor' && me.wholesaleStatus === 'approved') return (
+    <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-grass/30 bg-grass/10 p-4 text-[14px] text-ink"><BadgeCheck className="h-5 w-5 text-grass" /><span className="flex-1"><b>Approved distributor.</b> Your distributor prices show on every product.</span><Link to="/shop" className="font-semibold text-grass hover:underline">See my prices →</Link></div>
+  )
+  if (me.accountType === 'distributor' && me.wholesaleStatus === 'pending') return (
+    <div className="flex items-center gap-3 rounded-2xl border border-sun/60 bg-sun/15 p-4 text-[14px] text-ink"><Hourglass className="h-5 w-5" /><span><b>Distributor application under review.</b> We'll email you once it's approved, then your distributor prices will appear here.</span></div>
+  )
   if (me.accountType === 'wholesale' && me.wholesaleStatus === 'approved') return (
     <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-grass/30 bg-grass/10 p-4 text-[14px] text-ink"><BadgeCheck className="h-5 w-5 text-grass" /><span className="flex-1"><b>Wholesale account approved.</b> Request a bulk quote any time.</span><Link to={quoteHref()} className="font-semibold text-grass hover:underline">Request bulk quote →</Link></div>
   )
@@ -588,11 +611,18 @@ function WholesaleApply({ me, reload }) {
   const [company, setCompany] = useState(me.company || '')
   const [note, setNote] = useState('')
   const [msg, setMsg] = useState(null)
-  const type = { individual: 'Individual', wholesale: 'Wholesale', international: 'International' }[me.accountType] || 'Individual'
+  const type = { individual: 'Individual', wholesale: 'Wholesale', distributor: 'Distributor', international: 'International' }[me.accountType] || 'Individual'
+  const status = me.wholesaleStatus
+  if (me.accountType === 'distributor') return (
+    <div className="rounded-2xl border border-ink/10 bg-paper p-6 lg:col-span-2">
+      <h2 className="font-display text-[18px] font-bold text-ink">Account type: Distributor{status === 'approved' ? ' · approved' : status === 'pending' ? ' · under review' : status === 'rejected' ? ' · not approved' : ''}</h2>
+      <p className="mt-2 text-[14px] text-muted">{me.area ? `Areas covered: ${me.area}. ` : ''}{me.monthlyVolume ? `Expected volume: ${me.monthlyVolume}.` : ''}</p>
+      {status === 'rejected' && <p className="mt-2 text-[14px] text-muted">Please <Link to="/#contact" className="font-semibold text-grass hover:underline">contact us</Link> to tell us more about your business.</p>}
+    </div>
+  )
   if (me.accountType === 'international') return (
     <div className="rounded-2xl border border-ink/10 bg-paper p-6 lg:col-span-2"><h2 className="font-display text-[18px] font-bold text-ink">Account type: International</h2><p className="mt-2 text-[14px] text-muted">Request an export quotation any time and our team will reply with prices and shipping.</p></div>
   )
-  const status = me.wholesaleStatus
   async function apply(e) {
     e.preventDefault(); setMsg(null)
     try { await accountApi('/wholesale-apply', { method: 'POST', body: { company, note } }); setMsg({ ok: true, text: "Thanks. We'll review your request and email you." }); reload() }

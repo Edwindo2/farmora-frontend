@@ -120,7 +120,7 @@ function DeleteDialog({ product, onClose, onDeleted }) {
 }
 
 function VariantRow({ v, onSaved }) {
-  const initial = { label: v.label, ngn: v.ngn ?? '', usd: v.usd ?? '', wholesaleNgn: v.wholesaleNgn ?? '', wholesaleUsd: v.wholesaleUsd ?? '', stock: v.stock ?? '', active: v.active }
+  const initial = { label: v.label, ngn: v.ngn ?? '', usd: v.usd ?? '', wholesaleNgn: v.wholesaleNgn ?? '', wholesaleUsd: v.wholesaleUsd ?? '', distributorNgn: v.distributorNgn ?? '', distributorUsd: v.distributorUsd ?? '', stock: v.stock ?? '', active: v.active }
   const [f, setF] = useState(initial)
   const [state, setState] = useState('')
   const [confirm, setConfirm] = useState(false)
@@ -143,6 +143,8 @@ function VariantRow({ v, onSaved }) {
       <td className="py-2.5 pr-3"><input className={`${input} w-24`} inputMode="decimal" placeholder="Quote" value={f.usd} onChange={e => setF({ ...f, usd: e.target.value })} aria-label="Price in dollars" /></td>
       <td className="py-2.5 pr-3"><input className={`${input} w-28`} inputMode="decimal" placeholder="Same" value={f.wholesaleNgn} onChange={e => setF({ ...f, wholesaleNgn: e.target.value })} aria-label="Wholesale price in naira" /></td>
       <td className="py-2.5 pr-3"><input className={`${input} w-24`} inputMode="decimal" placeholder="Same" value={f.wholesaleUsd} onChange={e => setF({ ...f, wholesaleUsd: e.target.value })} aria-label="Wholesale price in dollars" /></td>
+      <td className="py-2.5 pr-3"><input className={`${input} w-28`} inputMode="decimal" placeholder="Wholesale" value={f.distributorNgn} onChange={e => setF({ ...f, distributorNgn: e.target.value })} aria-label="Distributor price in naira" /></td>
+      <td className="py-2.5 pr-3"><input className={`${input} w-24`} inputMode="decimal" placeholder="Wholesale" value={f.distributorUsd} onChange={e => setF({ ...f, distributorUsd: e.target.value })} aria-label="Distributor price in dollars" /></td>
       <td className="py-2.5 pr-3"><input className={`${input} w-24`} inputMode="numeric" placeholder="Not tracked" value={f.stock} onChange={e => setF({ ...f, stock: e.target.value })} aria-label="Stock" /></td>
       <td className="py-2.5 pr-3"><label className="flex items-center gap-2 whitespace-nowrap text-[13px]"><input type="checkbox" checked={f.active} onChange={e => setF({ ...f, active: e.target.checked })} /> On sale</label></td>
       <td className="py-2.5 text-right">
@@ -159,7 +161,7 @@ function VariantRow({ v, onSaved }) {
 }
 
 function NewVariant({ productId, onSaved }) {
-  const empty = { label: '', ngn: '', usd: '', wholesaleNgn: '', wholesaleUsd: '', stock: '' }
+  const empty = { label: '', ngn: '', usd: '', wholesaleNgn: '', wholesaleUsd: '', distributorNgn: '', distributorUsd: '', stock: '' }
   const [f, setF] = useState(empty)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -177,6 +179,8 @@ function NewVariant({ productId, onSaved }) {
       <input className={`${input} w-24`} inputMode="decimal" placeholder="$ price" value={f.usd} onChange={e => setF({ ...f, usd: e.target.value })} aria-label="New pack price in dollars" />
       <input className={`${input} w-28`} inputMode="decimal" placeholder="Wholesale ₦" value={f.wholesaleNgn} onChange={e => setF({ ...f, wholesaleNgn: e.target.value })} aria-label="New pack wholesale price in naira" />
       <input className={`${input} w-28`} inputMode="decimal" placeholder="Wholesale $" value={f.wholesaleUsd} onChange={e => setF({ ...f, wholesaleUsd: e.target.value })} aria-label="New pack wholesale price in dollars" />
+      <input className={`${input} w-28`} inputMode="decimal" placeholder="Distributor ₦" value={f.distributorNgn} onChange={e => setF({ ...f, distributorNgn: e.target.value })} aria-label="New pack distributor price in naira" />
+      <input className={`${input} w-28`} inputMode="decimal" placeholder="Distributor $" value={f.distributorUsd} onChange={e => setF({ ...f, distributorUsd: e.target.value })} aria-label="New pack distributor price in dollars" />
       <input className={`${input} w-24`} inputMode="numeric" placeholder="Stock" value={f.stock} onChange={e => setF({ ...f, stock: e.target.value })} aria-label="New pack stock" />
       <button className={`${ghost} ml-auto`} disabled={busy || !f.label.trim()}><Plus className="h-4 w-4" /> Add pack size</button>
       {error && <p className="w-full text-[12px] text-red-500">{error}</p>}
@@ -235,7 +239,7 @@ export default function Products() {
         <div>
           <p className="text-[11px] uppercase tracking-[0.28em] text-lime">Products</p>
           <h1 className="mt-2 text-[28px] font-semibold tracking-[-0.01em]">Oils & prices</h1>
-          <p className="mt-2 max-w-[42em] text-[14px] text-muted">Add, edit, hide or delete oils and their pack sizes. Prices are in whole naira and dollars; leave a price empty to show "Quote on request", and leave stock empty if you don't track it. Wholesale prices are shown only to approved wholesale accounts; leave them empty to use the normal price.</p>
+          <p className="mt-2 max-w-[42em] text-[14px] text-muted">Add, edit, hide or delete oils and their pack sizes. Prices are in whole naira and dollars; leave a price empty to show "Quote on request", and leave stock empty if you don't track it. Customers never see prices, except approved accounts: wholesale accounts see the Wholesale price and distributors see the Distributor price. Leave a distributor price empty to use the wholesale price.</p>
         </div>
         <button className={lime} onClick={() => setEditing('new')}><Plus className="h-4 w-4" /> Add oil</button>
       </div>
@@ -273,10 +277,10 @@ export default function Products() {
             {p.variants.length > 0 && (
               <table className="w-full min-w-[960px] text-left text-[14px]">
                 <thead className="text-[11px] uppercase tracking-[0.1em] text-faint">
-                  <tr><th className="py-2 font-medium">Pack</th><th className="py-2 font-medium">Price ₦</th><th className="py-2 font-medium">Price $</th><th className="py-2 font-medium">Wholesale ₦</th><th className="py-2 font-medium">Wholesale $</th><th className="py-2 font-medium">Stock</th><th className="py-2 font-medium">Status</th><th /></tr>
+                  <tr><th className="py-2 font-medium">Pack</th><th className="py-2 font-medium">Price ₦</th><th className="py-2 font-medium">Price $</th><th className="py-2 font-medium">Wholesale ₦</th><th className="py-2 font-medium">Wholesale $</th><th className="py-2 font-medium">Distributor ₦</th><th className="py-2 font-medium">Distributor $</th><th className="py-2 font-medium">Stock</th><th className="py-2 font-medium">Status</th><th /></tr>
                 </thead>
                 <tbody className="divide-y divide-ink/10">
-                  {p.variants.map(v => <VariantRow key={[v.id, v.label, v.ngn, v.usd, v.wholesaleNgn, v.wholesaleUsd, v.stock, v.active].join('|')} v={v} onSaved={load} />)}
+                  {p.variants.map(v => <VariantRow key={[v.id, v.label, v.ngn, v.usd, v.wholesaleNgn, v.wholesaleUsd, v.distributorNgn, v.distributorUsd, v.stock, v.active].join('|')} v={v} onSaved={load} />)}
                 </tbody>
               </table>
             )}

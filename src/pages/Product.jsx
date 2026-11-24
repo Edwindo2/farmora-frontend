@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { FileText, Minus, Plus, Truck, Ship, ShieldCheck, ChevronRight, Loader2 } from 'lucide-react'
 import { Shell } from './Account'
 import { useCart } from '../cart'
-import { ModeToggle } from '../components/Shop'
+import { ModeToggle, TierPrice } from '../components/Shop'
 import { packImage } from '../components/Home'
 import { WishButton } from '../wishlist'
 import { quoteHref } from '../lib'
@@ -72,7 +72,7 @@ export default function Product() {
           <div>
             <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-grass">{product.tag}</p>
             <h1 className="mt-2 font-display text-[32px] font-extrabold leading-tight text-ink md:text-[40px]">{product.name}</h1>
-            <p className="mt-4 font-display text-[22px] font-bold text-ruby">Bulk price on request</p>
+            <TierPrice size={size} className="mt-4 font-display text-[22px] font-bold text-ruby" />
             <p className="mt-1 text-[13.5px] text-muted">We supply in bulk only, with a minimum order of 5 of any pack size. Choose a pack size and quantity, and we'll reply with prices, availability and delivery within one business day.</p>
 
             <div className="mt-6"><ModeToggle mode={mode} setMode={setMode} /></div>

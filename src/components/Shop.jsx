@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { SectionHead } from './Story'
-import { TONES, quoteHref } from '../lib'
+import { TONES, priceOf, quoteHref } from '../lib'
 import { useCart } from '../cart'
 import { WishButton } from '../wishlist'
 
@@ -27,6 +27,15 @@ export function ModeToggle({ mode, setMode }) {
       ))}
     </div>
   )
+}
+
+// Price line for a pack size. Prices are hidden, except for approved distributors and wholesale
+// accounts, who see their own price (the API only marks a size with `tier` for them).
+export function TierPrice({ size, className = '' }) {
+  const { mode, price } = useCart()
+  const v = size?.tier ? priceOf(size, mode) : null
+  if (v == null) return <p className={className}>Bulk price on request</p>
+  return <p className={className}>Your {size.tier} price: <b className="whitespace-nowrap">{price(v)}</b></p>
 }
 
 // "Wholesale price" label with the normal price struck through, for approved wholesale accounts.
@@ -81,7 +90,7 @@ function ProductCard({ product, mode, index = 0 }) {
         <div className="mt-auto flex items-end justify-between gap-4 pt-8">
           <div>
             <p className="text-[11px] tracking-[0.2em] uppercase text-faint">Price</p>
-            <p className="mt-1 text-[14px] font-semibold text-grass">Bulk price on request</p>
+            <TierPrice size={size} className="mt-1 text-[14px] font-semibold text-grass" />
           </div>
           <Link
             to={quoteHref({ type: mode === 'international' ? 'export' : 'wholesale', product: product.name, size: size?.label })}

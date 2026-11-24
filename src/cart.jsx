@@ -29,8 +29,10 @@ export function CartProvider({ children }) {
   const [displayCurrency, setDisplayCurrencyState] = useState(() => { try { return localStorage.getItem(CUR_KEY) || 'USD' } catch { return 'USD' } })
   const first = useRef(true)
 
-  const wholesale = me?.accountType === 'wholesale' && me?.wholesaleStatus === 'approved'
-  const priceKey = me === undefined ? null : wholesale ? 'wholesale' : 'retail'
+  // approved distributors and wholesale accounts see their own prices; products are re-fetched when this changes
+  const tier = me?.wholesaleStatus === 'approved' && ['wholesale', 'distributor'].includes(me?.accountType) ? me.accountType : null
+  const wholesale = Boolean(tier)
+  const priceKey = me === undefined ? null : tier || 'retail'
 
   // International accounts start in USD mode
   useEffect(() => { if (me?.accountType === 'international' && !saved?.mode) setMode('international') }, [me, saved])
@@ -113,7 +115,7 @@ export function CartProvider({ children }) {
     products, loadError, ready, mode, setMode, cart, add, setQty, remove, clear,
     count: cart.reduce((s, l) => s + l.qty, 0),
     drawer, openDrawer, closeDrawer,
-    wholesale, price, currencies, displayCurrency: shownCurrency || 'USD', setDisplayCurrency,
+    wholesale, tier, price, currencies, displayCurrency: shownCurrency || 'USD', setDisplayCurrency,
     converted: Boolean(shownCurrency && shownCurrency !== 'USD'),
   }
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>
