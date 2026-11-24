@@ -3,41 +3,48 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { Heart } from 'lucide-react'
 import { useAuth } from './auth'
 
-// The signed-in customer's wishlist (product ids), shared by heart buttons and the dashboard.
+// The signed-in customer's wishlist, saved per pack size. Each entry is { productId, sizeId } (sizeId null = an
+// older whole-product save). Shared by the heart buttons and the dashboard.
 const WishContext = createContext(null)
+const keyOf = (productId, sizeId) => `${productId}:${sizeId || ''}`
 
 export function WishlistProvider({ children }) {
   const { me } = useAuth()
-  const [ids, setIds] = useState([])
+  const [items, setItems] = useState([])
   useEffect(() => {
-    if (!me) { setIds([]); return }
-    fetch('/api/account/wishlist', { credentials: 'include' }).then(r => (r.ok ? r.json() : [])).then(list => setIds(list.map(i => i.productId))).catch(() => {})
+    if (!me) { setItems([]); return }
+    fetch('/api/account/wishlist', { credentials: 'include' }).then(r => (r.ok ? r.json() : [])).then(list => setItems(list.map(i => ({ productId: i.productId, sizeId: i.sizeId || null })))).catch(() => {})
   }, [me])
-  const toggle = useCallback(async id => {
-    const on = ids.includes(id)
-    setIds(list => (on ? list.filter(x => x !== id) : [id, ...list])) // optimistic
-    const res = await fetch(on ? `/api/account/wishlist/${encodeURIComponent(id)}` : '/api/account/wishlist', {
+  const has = useCallback((productId, sizeId) => items.some(i => keyOf(i.productId, i.sizeId) === keyOf(productId, sizeId)), [items])
+  const toggle = useCallback(async (productId, sizeId = null) => {
+    const key = keyOf(productId, sizeId)
+    const on = items.some(i => keyOf(i.productId, i.sizeId) === key)
+    const entry = { productId, sizeId: sizeId || null }
+    const without = list => list.filter(i => keyOf(i.productId, i.sizeId) !== key)
+    setItems(list => (on ? without(list) : [entry, ...list])) // optimistic
+    const url = on ? `/api/account/wishlist/${encodeURIComponent(productId)}${sizeId ? `?size=${encodeURIComponent(sizeId)}` : ''}` : '/api/account/wishlist'
+    const res = await fetch(url, {
       method: on ? 'DELETE' : 'POST', credentials: 'include',
-      headers: { 'Content-Type': 'application/json' }, body: on ? undefined : JSON.stringify({ productId: id }),
+      headers: { 'Content-Type': 'application/json' }, body: on ? undefined : JSON.stringify(entry),
     }).catch(() => null)
-    if (!res?.ok) setIds(list => (on ? [id, ...list] : list.filter(x => x !== id))) // undo on failure
-  }, [ids])
-  return <WishContext.Provider value={{ ids, has: id => ids.includes(id), toggle }}>{children}</WishContext.Provider>
+    if (!res?.ok) setItems(list => (on ? [entry, ...list] : without(list))) // undo on failure
+  }, [items])
+  return <WishContext.Provider value={{ items, has, toggle }}>{children}</WishContext.Provider>
 }
 
 export const useWishlist = () => useContext(WishContext)
 
-// Heart button. Signed-out visitors are sent to sign in first.
-export function WishButton({ productId, className = '', label = false }) {
+// Heart button for one pack size. Signed-out visitors are sent to sign in first.
+export function WishButton({ productId, sizeId = null, className = '', label = false }) {
   const { me } = useAuth()
   const { has, toggle } = useWishlist()
   const nav = useNavigate()
   const { pathname, search } = useLocation()
-  const on = has(productId)
+  const on = has(productId, sizeId)
   return (
     <button
       type="button"
-      onClick={e => { e.preventDefault(); e.stopPropagation(); if (!me) nav(`/login?next=${encodeURIComponent(pathname + search)}`); else toggle(productId) }}
+      onClick={e => { e.preventDefault(); e.stopPropagation(); if (!me) nav(`/login?next=${encodeURIComponent(pathname + search)}`); else toggle(productId, sizeId) }}
       aria-pressed={on}
       aria-label={on ? 'Remove from wishlist' : 'Save to wishlist'}
       title={on ? 'Remove from wishlist' : 'Save to wishlist'}

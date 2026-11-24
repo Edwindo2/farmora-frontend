@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { FileText, ArrowRight, Leaf, ShieldCheck, Globe2, Handshake, Headset, CheckCircle2, ChevronLeft, ChevronRight, Star, Check } from 'lucide-react'
+import { FileText, ArrowRight, Leaf, ShieldCheck, Globe2, Handshake, Headset, CheckCircle2, ChevronLeft, ChevronRight, Star, Check, ShoppingCart } from 'lucide-react'
 import { useCart } from '../cart'
 import { WishButton } from '../wishlist'
 import { useSite } from '../site'
-import { quoteHref } from '../lib'
+import { quoteHref, orderHref } from '../lib'
 import { TierPrice } from './Shop'
 
 // Home page sections, laid out like the Farmora guide design.
@@ -113,7 +113,7 @@ function PackCard({ product, size, index }) {
   const { mode } = useCart()
   return (
     <article className="reveal lift group relative flex flex-col items-center rounded-2xl border border-ink/10 bg-paper p-4 text-center shadow-sm hover:shadow-lg" style={{ '--d': `${index * 0.08}s` }}>
-      <WishButton productId={product.id} className="absolute right-2.5 top-2.5 z-10 h-9 w-9 rounded-full bg-paper/90 text-ink shadow-sm hover:text-ruby" />
+      <WishButton productId={product.id} sizeId={size.id} className="absolute right-2.5 top-2.5 z-10 h-9 w-9 rounded-full bg-paper/90 text-ink shadow-sm hover:text-ruby" />
       <Link to={`/product/${product.id}`} className="grid aspect-square w-full place-items-center overflow-hidden rounded-xl bg-white" aria-label={`View ${product.name}, ${size.label}`}>
         <img src={packImage(product, size)} alt={`Farmora ${product.name}, ${size.label}`} loading="lazy" className="h-full w-full object-contain p-2 transition-transform duration-500 group-hover:scale-105" />
       </Link>
@@ -121,10 +121,10 @@ function PackCard({ product, size, index }) {
       <p className="text-[12.5px] text-muted">{product.name}</p>
       <TierPrice size={size} className="mb-3 mt-1 text-[12.5px] font-medium text-grass" />
       <Link
-        to={quoteHref({ type: mode === 'international' ? 'export' : 'wholesale', product: product.name, size: size.label })}
+        to={orderHref([{ product: product.id, size: size.id }])}
         className="btn-micro mt-auto inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-grass px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-grass-deep sm:px-5"
       >
-        <FileText className="h-4 w-4" /> Request Quote
+        <ShoppingCart className="h-4 w-4" /> Order now
       </Link>
     </article>
   )

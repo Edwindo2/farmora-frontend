@@ -17,7 +17,7 @@ import { Avatar, KycBadge, PhotoCard, KycPanel, Messages, useNotices, CurrentLoc
 import { useCart } from '../cart'
 import { useWishlist, WishButton } from '../wishlist'
 import { packImage } from '../components/Home'
-import { quoteHref, priceOf, currencyOf } from '../lib'
+import { quoteHref, orderHref, priceOf, currencyOf } from '../lib'
 
 // Customer accounts: register / sign in, then a dashboard with orders, live tracking and tracking history.
 
@@ -282,10 +282,9 @@ function useDashboard(me) {
   return { tick, refresh: () => setTick(t => t + 1), orders, events, notices, markRead, notes, unread, markSeen: () => { markSeenLocal(); markRead() }, badges }
 }
 
-// Opens the quote form pre-filled with an order's items, to order the same again.
-export function reorderItems(mode, items) {
-  const list = items.map(i => `${i.qty} × ${i.name} (${i.size})`).join(', ')
-  window.location.href = quoteHref({ type: mode === 'international' ? 'export' : 'wholesale', product: list })
+// Opens "Place order" with an order's items filled in, to order the same again.
+export function reorderItems(_mode, items) {
+  window.location.href = orderHref(items.filter(i => i.productId && i.sizeId).map(i => ({ product: i.productId, size: i.sizeId, qty: i.qty })))
 }
 
 function Progress({ status }) {
@@ -445,7 +444,7 @@ function Reorder({ orders }) {
                 <p className="text-[12.5px] text-muted">{b.size.label}</p>
                 <p className="text-[11.5px] text-faint">Last ordered {date(b.last)}</p>
               </div>
-              <Link to={quoteHref({ type: b.deliveryType === 'international' ? 'export' : 'wholesale', product: b.product.name, size: b.size.label, qty: b.qty })} className="btn-micro shrink-0 rounded-full bg-grass px-4 py-2 text-[13px] font-semibold text-white hover:bg-grass-deep">Request quote</Link>
+              <Link to={orderHref([{ product: b.productId, size: b.sizeId, qty: b.qty }])} className="btn-micro shrink-0 rounded-full bg-grass px-4 py-2 text-[13px] font-semibold text-white hover:bg-grass-deep">Order again</Link>
             </div>
           ))}
         </div>
@@ -497,36 +496,38 @@ function Invoices({ orders }) {
 }
 
 function Wishlist() {
-  const { ids } = useWishlist()
-  const { products, mode } = useCart()
-  const items = ids.map(id => products.find(p => p.id === id)).filter(Boolean)
+  const { items: saved } = useWishlist()
+  const { products } = useCart()
+  // one card per saved pack size (older whole-product saves show the first pack size)
+  const items = saved.map(w => {
+    const p = products.find(x => x.id === w.productId)
+    const size = p && (p.sizes.find(s => s.id === w.sizeId) || (!w.sizeId ? p.sizes[0] : null))
+    return p && size ? { p, size, sizeId: w.sizeId } : null
+  }).filter(Boolean)
   if (!items.length) return (
     <div className="rounded-2xl border border-dashed border-ink/20 bg-paper p-10 text-center">
       <Heart className="mx-auto h-8 w-8 text-faint" strokeWidth={1.5} />
-      <p className="mt-3 text-[14.5px] text-muted">Your wishlist is empty. Tap the heart on any product to save it here.</p>
+      <p className="mt-3 text-[14.5px] text-muted">Your wishlist is empty. Tap the heart on any pack size to save it here.</p>
       <Link to="/shop" className="btn-micro mt-5 inline-flex rounded-full bg-grass px-6 py-3 text-[14px] font-semibold text-white hover:bg-grass-deep">Browse products</Link>
     </div>
   )
   return (
     <div>
-      <h2 className="mb-4 font-display text-[19px] font-bold text-ink">My wishlist <span className="text-[14px] font-normal text-muted">({items.length})</span></h2>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {items.map(p => {
-          const size = p.sizes[0]
-          return (
-            <div key={p.id} className="relative flex flex-col rounded-2xl border border-ink/10 bg-paper p-4">
-              <WishButton productId={p.id} className="absolute right-3 top-3 h-9 w-9 rounded-full bg-paper text-ink shadow-sm" />
-              <Link to={`/product/${p.id}`} className="grid aspect-[4/3] place-items-center overflow-hidden rounded-xl bg-white"><img src={size ? packImage(p, size) : p.image} alt="" className="h-full w-full object-contain p-2" /></Link>
-              <Link to={`/product/${p.id}`} className="mt-3 font-display text-[16px] font-bold text-ink hover:text-grass">{p.name}</Link>
-              <p className="text-[12.5px] text-muted">{p.tag}</p>
-              {size && <p className="mt-1 text-[13px] font-semibold text-grass">Bulk price on request</p>}
-              <div className="mt-auto flex gap-2 pt-4">
-                {size && <Link to={quoteHref({ type: mode === 'international' ? 'export' : 'wholesale', product: p.name, size: size.label })} className="btn-micro flex-1 rounded-full bg-grass py-2.5 text-center text-[13px] font-semibold text-white hover:bg-grass-deep">Request quote</Link>}
-                <Link to={`/product/${p.id}`} className="rounded-full border border-ink/15 px-4 py-2.5 text-[13px] font-semibold text-ink hover:border-grass hover:text-grass">View</Link>
-              </div>
+      <p className="mb-4 text-[14px] text-muted">{items.length} saved pack size{items.length > 1 ? 's' : ''}.</p>
+      <div className="grid gap-4 @md:grid-cols-2 @4xl:grid-cols-3">
+        {items.map(({ p, size, sizeId }) => (
+          <div key={`${p.id}:${sizeId || ''}`} className="relative flex flex-col rounded-2xl border border-ink/10 bg-paper p-4">
+            <WishButton productId={p.id} sizeId={sizeId} className="absolute right-3 top-3 h-9 w-9 rounded-full bg-paper text-ink shadow-sm" />
+            <Link to={`/product/${p.id}`} className="grid aspect-[4/3] place-items-center overflow-hidden rounded-xl bg-white"><img src={packImage(p, size)} alt="" className="h-full w-full object-contain p-2" /></Link>
+            <Link to={`/product/${p.id}`} className="mt-3 font-display text-[16px] font-bold text-ink hover:text-grass">{size.label}</Link>
+            <p className="text-[12.5px] text-muted">{p.name}</p>
+            <TierPrice size={size} className="mt-1 text-[13px] font-semibold text-grass" />
+            <div className="mt-auto flex gap-2 pt-4">
+              <Link to={orderHref([{ product: p.id, size: size.id }])} className="btn-micro flex-1 rounded-full bg-grass py-2.5 text-center text-[13px] font-semibold text-white hover:bg-grass-deep">Order now</Link>
+              <Link to={`/product/${p.id}`} className="rounded-full border border-ink/15 px-4 py-2.5 text-[13px] font-semibold text-ink hover:border-grass hover:text-grass">View</Link>
             </div>
-          )
-        })}
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -680,7 +681,10 @@ function PlaceOrder({ me }) {
   const international = me.accountType === 'international'
   const local = !international
   const last = me.lastDelivery || {}
-  const [qty, setQty] = useState({}) // "productId:sizeId" -> number
+  const [params] = useSearchParams()
+  // ?add=productId:sizeId:qty,... from "Order now" / "Reorder" buttons
+  const [qty, setQty] = useState(() => Object.fromEntries((params.get('add') || '').split(',').filter(Boolean).map(x => { const [p, s, n] = x.split(':'); return [`${p}:${s}`, Math.max(MIN_QTY, Number(n) || MIN_QTY)] })))
+  const picked = Object.keys(qty)
   const [d, setD] = useState({
     state: last.type === 'local' ? last.state || '' : '', city: last.city || '', address: last.type === 'local' ? last.address || '' : '',
     country: international ? last.country || me.country || '' : 'Nigeria', port: last.port || '', shipping: 'advise',
@@ -735,7 +739,7 @@ function PlaceOrder({ me }) {
       <section className="overflow-hidden rounded-2xl border border-ink/10 bg-paper">
         <ul className="divide-y divide-ink/10">
           {lines.map(({ p, s, key, n }) => (
-            <li key={key} className="flex flex-wrap items-center gap-4 p-4">
+            <li key={key} className={`flex flex-wrap items-center gap-4 p-4 ${picked.includes(key) ? 'bg-grass/[0.06]' : ''}`}>
               <img src={packImage(p, s)} alt="" className="h-14 w-14 shrink-0 rounded-xl border border-ink/10 bg-white object-contain p-1" />
               <div className="min-w-0 flex-1">
                 <p className="font-display text-[15px] font-bold text-ink">{p.name}</p>

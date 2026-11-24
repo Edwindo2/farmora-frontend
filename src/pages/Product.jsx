@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { FileText, Minus, Plus, Truck, Ship, ShieldCheck, ChevronRight, Loader2 } from 'lucide-react'
+import { FileText, Minus, Plus, Truck, Ship, ShieldCheck, ChevronRight, Loader2, ShoppingCart } from 'lucide-react'
 import { Shell } from './Account'
 import { useCart } from '../cart'
 import { ModeToggle, TierPrice } from '../components/Shop'
 import { packImage } from '../components/Home'
 import { WishButton } from '../wishlist'
-import { quoteHref } from '../lib'
+import { quoteHref, orderHref } from '../lib'
 
 // Product page: photo, pack sizes, quantity, a bulk quote button and related products.
 export default function Product() {
@@ -96,10 +96,10 @@ export default function Product() {
                 <input value={qty} onChange={e => setQtyLocal(Math.max(5, Math.min(100000, parseInt(e.target.value, 10) || 5)))} inputMode="numeric" aria-label="Quantity" className="w-16 bg-transparent text-center text-[16px] font-semibold text-ink outline-none" />
                 <button onClick={() => setQtyLocal(q => Math.min(100000, q + 5))} className="grid h-12 w-12 place-items-center text-muted hover:text-ink" aria-label="Increase quantity"><Plus className="h-4 w-4" /></button>
               </div>
-              <Link to={quote} className="btn-micro flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-grass px-6 text-[15px] font-semibold text-white hover:bg-grass-deep sm:flex-none">
-                <FileText className="h-5 w-5" /> Request Bulk Quote
+              <Link to={size ? orderHref([{ product: product.id, size: size.id, qty }]) : quote} className="btn-micro flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-grass px-6 text-[15px] font-semibold text-white hover:bg-grass-deep sm:flex-none">
+                <ShoppingCart className="h-5 w-5" /> Order now
               </Link>
-              <WishButton productId={product.id} className="h-12 w-12 rounded-full border border-ink/15 text-ink hover:border-ruby hover:text-ruby" />
+              <WishButton productId={product.id} sizeId={size?.id} className="h-12 w-12 rounded-full border border-ink/15 text-ink hover:border-ruby hover:text-ruby" />
             </div>
 
             <ul className="mt-8 grid gap-3 rounded-2xl border border-ink/10 bg-mist p-5 text-[14px] text-ink sm:grid-cols-3">

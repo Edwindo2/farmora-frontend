@@ -62,6 +62,13 @@ export function useTheme() {
   return [theme, () => setTheme(t => (t === 'dark' ? 'light' : 'dark'))]
 }
 
+// Link to "Place order" in the customer dashboard with items already filled in.
+// items: [{ product: productId, size: sizeId, qty }]. Signed-out visitors sign in or register first, then land on the form.
+export function orderHref(items = []) {
+  const add = items.filter(i => i.product && i.size).map(i => `${i.product}:${i.size}:${Math.max(5, Number(i.qty) || 5)}`).join(',')
+  return `/account?tab=order${add ? `&add=${encodeURIComponent(add)}` : ''}`
+}
+
 // Link to the quote form on the home page, pre-filled with what the buyer picked.
 // type: 'wholesale' (bulk in Nigeria), 'export' (international) or 'distributor'.
 export function quoteHref({ type = 'wholesale', product, size, qty } = {}) {

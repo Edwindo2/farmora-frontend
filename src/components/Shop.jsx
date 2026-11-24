@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { SectionHead } from './Story'
-import { TONES, priceOf, quoteHref } from '../lib'
+import { TONES, priceOf, quoteHref, orderHref } from '../lib'
 import { useCart } from '../cart'
 import { WishButton } from '../wishlist'
 
@@ -67,7 +67,7 @@ function ProductCard({ product, mode, index = 0 }) {
         <span className="absolute left-4 top-4 rounded-full bg-paper/90 px-3 py-1.5 text-[10px] font-medium tracking-[0.2em] uppercase text-ink backdrop-blur">
           {product.tag}
         </span>
-        <WishButton productId={product.id} className="absolute right-3 top-3 h-10 w-10 rounded-full bg-paper/90 text-ink shadow backdrop-blur hover:text-ruby" />
+        <WishButton productId={product.id} sizeId={size?.id} className="absolute right-3 top-3 h-10 w-10 rounded-full bg-paper/90 text-ink shadow backdrop-blur hover:text-ruby" />
       </Link>
       <div className="flex flex-1 flex-col p-7">
         <h3 className="font-display text-[24px] font-bold leading-tight"><Link to={`/product/${product.id}`} className="hover:text-grass">{product.name}</Link></h3>
@@ -93,10 +93,10 @@ function ProductCard({ product, mode, index = 0 }) {
             <TierPrice size={size} className="mt-1 text-[14px] font-semibold text-grass" />
           </div>
           <Link
-            to={quoteHref({ type: mode === 'international' ? 'export' : 'wholesale', product: product.name, size: size?.label })}
+            to={size ? orderHref([{ product: product.id, size: size.id }]) : quoteHref({ type: mode === 'international' ? 'export' : 'wholesale', product: product.name })}
             className="btn-micro whitespace-nowrap rounded-full bg-grass px-5 py-3 text-[13px] font-medium text-white hover:bg-grass-deep"
           >
-            Request Bulk Quote
+            Order now
           </Link>
         </div>
       </div>
