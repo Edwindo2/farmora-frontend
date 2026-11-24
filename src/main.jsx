@@ -34,6 +34,7 @@ import Location from './admin/Location.jsx'
 import Content from './admin/Content.jsx'
 import Kyc from './admin/Kyc.jsx'
 import Broadcasts from './admin/Broadcasts.jsx'
+import Payments from './admin/Payments.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -69,6 +70,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="customers" element={<Customers />} />
           <Route path="kyc" element={<Kyc />} />
           <Route path="notify" element={<Broadcasts />} />
+          <Route path="payments" element={<Payments />} />
           <Route path="faq" element={<FaqAdmin />} />
           <Route path="location" element={<Location />} />
           <Route path="content" element={<Content />} />

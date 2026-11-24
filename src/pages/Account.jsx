@@ -822,17 +822,112 @@ function PayBox({ order, onPaid }) {
     <div className="flex items-center gap-3 rounded-2xl border border-grass/30 bg-grass/10 p-5 text-[14px] text-ink"><BadgeCheck className="h-5 w-5 text-grass" /><span><b>Paid.</b> {order.paymentMethod ? `${order.paymentMethod}. ` : ''}Thank you, we're preparing your order.</span></div>
   )
   if (order.status === 'cancelled') return null
-  return (
-    <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-ink/10 bg-paper p-5">
-      <CreditCard className="h-6 w-6 text-grass" />
-      <div className="min-w-0 flex-1 text-[14px] text-ink">
-        {order.canPay
-          ? <><b>Ready for payment:</b> {fmt(order.total, order.currency)} including delivery.</>
-          : <><b>Payment:</b> once we confirm the final price and delivery cost, you can pay here online.</>}
-        {state.msg && <p className="mt-1 text-[13px] text-muted" role="status">{state.msg}</p>}
-      </div>
-      {order.canPay && <button onClick={pay} disabled={state.busy} className="btn-micro flex items-center gap-2 rounded-full bg-grass px-6 py-3 text-[14px] font-semibold text-white hover:bg-grass-deep disabled:opacity-60"><CreditCard className="h-4 w-4" /> {state.busy ? 'Please wait…' : 'Pay now'}</button>}
+  if (!order.canPay) return (
+    <div className="flex items-center gap-4 rounded-2xl border border-ink/10 bg-paper p-5">
+      <CreditCard className="h-6 w-6 shrink-0 text-grass" />
+      <p className="text-[14px] text-ink"><b>Payment:</b> once we confirm the final price and delivery cost, you can pay here by Flutterwave or bank transfer.</p>
     </div>
+  )
+  return <PayOptions order={order} pay={pay} state={state} onReported={onPaid} />
+}
+
+function CopyRow({ label, value, mono }) {
+  const [copied, setCopied] = useState(false)
+  const copy = () => { navigator.clipboard?.writeText(String(value)).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500) }).catch(() => {}) }
+  return (
+    <div className="flex items-center justify-between gap-3 py-2.5">
+      <dt className="text-[13px] text-muted">{label}</dt>
+      <dd className="flex min-w-0 items-center gap-2">
+        <span className={`truncate text-right text-ink ${mono ? 'font-mono text-[15px] font-semibold tracking-wider' : 'text-[14px] font-medium'}`}>{value}</span>
+        <button type="button" onClick={copy} className="shrink-0 rounded-full border border-ink/15 px-2.5 py-1 text-[11px] font-medium text-muted hover:border-grass hover:text-grass">{copied ? 'Copied' : 'Copy'}</button>
+      </dd>
+    </div>
+  )
+}
+
+// Two ways to pay a confirmed order: Flutterwave (card / transfer / USSD) or a direct bank transfer.
+function PayOptions({ order, pay, state, onReported }) {
+  const [method, setMethod] = useState(order.payOnline ? 'online' : 'bank')
+  const [payer, setPayer] = useState('')
+  const [sent, setSent] = useState({ busy: false, error: '', at: order.transferSentAt })
+  async function reportTransfer() {
+    setSent(s => ({ ...s, busy: true, error: '' }))
+    try { const r = await accountApi(`/orders/${order.reference}/transfer-sent`, { method: 'POST', body: { payer } }); setSent({ busy: false, error: '', at: r.transferSentAt }); onReported?.() }
+    catch (err) { setSent(s => ({ ...s, busy: false, error: err.message })) }
+  }
+  const amount = fmt(order.total, order.currency)
+  const opt = on => `flex flex-1 items-center gap-3 rounded-xl border p-4 text-left transition ${on ? 'border-grass bg-grass/[0.07] ring-2 ring-grass/20' : 'border-ink/15 hover:border-grass/50'}`
+  const b = order.bank
+  return (
+    <section className="rounded-2xl border border-ink/10 bg-paper p-5 md:p-6">
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-grass">Ready for payment</p>
+          <p className="mt-1 text-[24px] font-semibold text-ink">{amount}</p>
+          <p className="text-[12.5px] text-muted">Including delivery · order {order.reference}</p>
+        </div>
+      </div>
+
+      <div className="mt-5 flex flex-col gap-3 sm:flex-row" role="radiogroup" aria-label="How would you like to pay?">
+        <button type="button" role="radio" aria-checked={method === 'online'} onClick={() => setMethod('online')} className={opt(method === 'online')}>
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-sun/25 text-ink"><CreditCard className="h-5 w-5" /></span>
+          <span><span className="block text-[14px] font-semibold text-ink">Pay online</span><span className="block text-[12px] text-muted">Card, bank transfer or USSD via Flutterwave</span></span>
+        </button>
+        <button type="button" role="radio" aria-checked={method === 'bank'} onClick={() => setMethod('bank')} className={opt(method === 'bank')}>
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-grass/15 text-grass"><Building2 className="h-5 w-5" /></span>
+          <span><span className="block text-[14px] font-semibold text-ink">Bank transfer</span><span className="block text-[12px] text-muted">Pay into our account, then tell us</span></span>
+        </button>
+      </div>
+
+      {method === 'online' && (
+        <div className="mt-5">
+          {order.payOnline ? (
+            <>
+              <button onClick={pay} disabled={state.busy} className="btn-micro flex w-full items-center justify-center gap-2 rounded-full bg-grass py-3.5 text-[15px] font-semibold text-white hover:bg-grass-deep disabled:opacity-60 sm:w-auto sm:px-8"><CreditCard className="h-4 w-4" /> {state.busy ? 'Please wait…' : `Pay ${amount} with Flutterwave`}</button>
+              <p className="mt-2 text-[12px] text-faint">You'll be taken to Flutterwave's secure page and brought back here once paid.</p>
+            </>
+          ) : (
+            <p className="rounded-xl bg-ink/[0.04] p-4 text-[13.5px] text-muted">Online payment is coming soon. Please use <button type="button" onClick={() => setMethod('bank')} className="font-semibold text-grass hover:underline">bank transfer</button> for now.</p>
+          )}
+          {state.msg && <p className="mt-2 text-[13px] text-muted" role="status">{state.msg}</p>}
+        </div>
+      )}
+
+      {method === 'bank' && (
+        <div className="mt-5">
+          {!b ? (
+            <p className="rounded-xl bg-ink/[0.04] p-4 text-[13.5px] text-muted">Our bank details for {order.currency === 'USD' ? 'dollar' : 'Naira'} payments are not listed yet. Please <a href="/#contact" className="font-semibold text-grass hover:underline">contact us</a> and quote {order.reference}.</p>
+          ) : (
+            <div className="grid gap-5 @3xl:grid-cols-[1.2fr_1fr]">
+              <dl className="divide-y divide-ink/10 rounded-xl border border-ink/10 px-4">
+                <CopyRow label="Amount" value={amount} />
+                <CopyRow label="Bank" value={b.bankName} />
+                <CopyRow label="Account name" value={b.accountName} />
+                <CopyRow label="Account number" value={b.accountNumber} mono />
+                {b.swift && <CopyRow label="SWIFT / BIC" value={b.swift} mono />}
+                <CopyRow label="Description / narration" value={order.reference} mono />
+              </dl>
+              <div className="space-y-3 text-[13.5px]">
+                {b.note && <p className="rounded-xl bg-sun/15 p-3 text-ink">{b.note}</p>}
+                <p className="text-muted">Use <b className="text-ink">{order.reference}</b> as the description so we can match your payment.</p>
+                {sent.at ? (
+                  <div className="flex gap-3 rounded-xl border border-grass/30 bg-grass/10 p-4 text-ink">
+                    <CheckCircle2 className="h-5 w-5 shrink-0 text-grass" />
+                    <p><b>Thanks, we've been notified.</b> We'll confirm once the transfer arrives, usually within a few hours on working days.</p>
+                  </div>
+                ) : (
+                  <>
+                    <input value={payer} onChange={e => setPayer(e.target.value)} placeholder="Name on the paying account (optional)" className="w-full rounded-xl border border-ink/15 bg-paper px-4 py-3 text-[14px] text-ink outline-none placeholder:text-faint focus:border-grass" />
+                    <button onClick={reportTransfer} disabled={sent.busy} className="btn-micro flex w-full items-center justify-center gap-2 rounded-full bg-grass py-3 text-[14px] font-semibold text-white hover:bg-grass-deep disabled:opacity-60"><CheckCircle2 className="h-4 w-4" /> {sent.busy ? 'Sending…' : "I've made the transfer"}</button>
+                    {sent.error && <p className="text-[13px] text-ruby" role="alert">{sent.error}</p>}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
   )
 }
 

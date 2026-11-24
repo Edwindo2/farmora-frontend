@@ -4,12 +4,12 @@ import { NavLink, Outlet, useNavigate, Link, useLocation } from 'react-router-do
 import { api } from './api'
 import { useTheme } from '../lib'
 import { LanguagePicker } from '../translate'
-import { LayoutGrid, ShoppingBag, Droplet, Users, MessageSquare, Store, CircleHelp, Search, RefreshCw, Bell, Globe, Mail, Phone, LogOut, Menu, Sun, Moon, MapPin, MessageSquareQuote, Wallet, ShieldCheck, Megaphone } from 'lucide-react'
+import { LayoutGrid, ShoppingBag, Droplet, Users, MessageSquare, Store, CircleHelp, Search, RefreshCw, Bell, Globe, Mail, Phone, LogOut, Menu, Sun, Moon, MapPin, MessageSquareQuote, Wallet, ShieldCheck, Megaphone, Landmark } from 'lucide-react'
 
 const ICONS = {
   overview: LayoutGrid, orders: ShoppingBag, products: Droplet, customers: Users, messages: MessageSquare,
   store: Store, help: CircleHelp, search: Search, refresh: RefreshCw, bell: Bell, globe: Globe,
-  order: ShoppingBag, message: MessageSquare, mail: Mail, phone: Phone, logout: LogOut, menu: Menu, pin: MapPin, quote: MessageSquareQuote, wallet: Wallet, kyc: ShieldCheck, send: Megaphone,
+  order: ShoppingBag, message: MessageSquare, mail: Mail, phone: Phone, logout: LogOut, menu: Menu, pin: MapPin, quote: MessageSquareQuote, wallet: Wallet, kyc: ShieldCheck, send: Megaphone, bank: Landmark,
 }
 export function Icon({ name, className = 'h-[18px] w-[18px]' }) {
   const C = ICONS[name]
@@ -29,9 +29,9 @@ export function ThemeButton({ className = '' }) {
 
 const GROUPS = [
   ['Dashboards', [[`${ADMIN}`, 'Overview', 'overview', true], [`${ADMIN}/orders`, 'Orders', 'orders'], [`${ADMIN}/products`, 'Products', 'products'], [`${ADMIN}/customers`, 'Customers', 'customers'], [`${ADMIN}/kyc`, 'KYC verification', 'kyc'], [`${ADMIN}/notify`, 'Send message', 'send']]],
-  ['Settings', [[`${ADMIN}/messages`, 'Messages', 'messages'], [`${ADMIN}/faq`, 'FAQ', 'help'], [`${ADMIN}/content`, 'Reviews & updates', 'quote'], [`${ADMIN}/location`, 'Location & contact', 'pin']]],
+  ['Settings', [[`${ADMIN}/messages`, 'Messages', 'messages'], [`${ADMIN}/faq`, 'FAQ', 'help'], [`${ADMIN}/content`, 'Reviews & updates', 'quote'], [`${ADMIN}/location`, 'Location & contact', 'pin'], [`${ADMIN}/payments`, 'Payments', 'bank']]],
 ]
-const TITLES = { '': 'Overview', orders: 'Orders', products: 'Products', customers: 'Customers', kyc: 'KYC verification', notify: 'Send message', messages: 'Messages', faq: 'FAQ', location: 'Location & contact', content: 'Reviews & updates' }
+const TITLES = { '': 'Overview', orders: 'Orders', products: 'Products', customers: 'Customers', kyc: 'KYC verification', notify: 'Send message', payments: 'Payments', messages: 'Messages', faq: 'FAQ', location: 'Location & contact', content: 'Reviews & updates' }
 
 const ago = d => {
   const s = (Date.now() - new Date(d)) / 1000

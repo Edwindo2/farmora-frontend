@@ -127,6 +127,16 @@ export default function OrderDetail() {
             </dl>
           </Card>
 
+          {o.transferSentAt && o.paymentStatus !== 'paid' && (
+            <section className="flex flex-wrap items-center gap-4 rounded-2xl border border-amber-400/50 bg-amber-400/10 p-5">
+              <div className="min-w-0 flex-1 text-[14px]">
+                <p className="font-semibold">Customer says they paid by bank transfer</p>
+                <p className="text-[13px] text-muted">Reported {date(o.transferSentAt)} · {fmt(o.total, o.currency)}. Check your bank account before confirming.</p>
+              </div>
+              <button disabled={busy} onClick={() => confirm(`Confirm you received ${fmt(o.total, o.currency)} for ${o.reference}?`) && update(o.next.includes('paid') ? { status: 'paid', note: 'Bank transfer received. Thank you!', notifyCustomer: true } : { paymentStatus: 'paid' }, 'Payment confirmed')} className={`${btn} bg-lime text-night hover:brightness-95`}>Payment received</button>
+            </section>
+          )}
+
           {!['delivered', 'cancelled'].includes(o.status) && (
             <Card title="Where is the order now?">
               {o.currentLocation && <p className="mb-3 text-[14px]">Currently at <b>{o.currentLocation}</b> <span className="text-faint">· {date(o.locationUpdatedAt)}</span></p>}
