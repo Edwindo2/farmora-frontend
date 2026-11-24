@@ -61,3 +61,13 @@ export function useTheme() {
   }, [theme])
   return [theme, () => setTheme(t => (t === 'dark' ? 'light' : 'dark'))]
 }
+
+// Link to the quote form on the home page, pre-filled with what the buyer picked.
+// type: 'wholesale' (bulk in Nigeria), 'export' (international) or 'distributor'.
+export function quoteHref({ type = 'wholesale', product, size, qty } = {}) {
+  const p = new URLSearchParams({ quote: type })
+  if (product) p.set('product', product)
+  if (size) p.set('size', size)
+  if (qty) p.set('qty', String(qty))
+  return `/?${p}#contact`
+}

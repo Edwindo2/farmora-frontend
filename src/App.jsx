@@ -4,12 +4,11 @@ import Nav from './components/Nav'
 import { HomeHero, FeatureStrip, ProductsSection, BuyerBanners, InfoRow } from './components/Home'
 import Contact from './components/Contact'
 import Faq from './components/Faq'
-import CartDrawer from './components/CartDrawer'
 import Footer from './components/Footer'
 import { useReveal } from './lib'
 import { ScrollProgress } from './components/Motion'
 
-// Home page. Buying happens on the separate /shop page.
+// Home page. Buyers request bulk quotes or apply to be distributors through the contact form.
 export default function App() {
   useReveal()
   const { hash, search } = useLocation()
@@ -33,7 +32,6 @@ export default function App() {
         <Contact />
       </main>
       <Footer />
-      <CartDrawer />
     </>
   )
 }

@@ -2,19 +2,18 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Mail, Lock, Eye, EyeOff, User, Phone, Building2, ArrowRight, ArrowLeft, Package, LogOut, RotateCcw, Truck, MapPin,
-  CheckCircle2, Loader2, LayoutDashboard, ListOrdered, History, UserCog, ShoppingCart, Clock, CircleDot, KeyRound,
-  Globe2, Store, Home as HomeIcon, FileText, Heart, ShoppingBag, Printer, BadgeCheck, Hourglass,
+  CheckCircle2, Loader2, LayoutDashboard, ListOrdered, History, UserCog, Clock, CircleDot, KeyRound,
+  Globe2, Store, FileText, Heart, ShoppingBag, Printer, BadgeCheck, Hourglass,
 } from 'lucide-react'
 import Nav from '../components/Nav'
 import Footer from '../components/Footer'
-import CartDrawer from '../components/CartDrawer'
 import { Badge, FLOW, fmt, date } from '../admin/ui'
 import { useAuth } from '../auth'
 import { AddressCard, AddressForm, EMPTY_ADDRESS } from '../components/Address'
 import { useCart } from '../cart'
 import { useWishlist, WishButton } from '../wishlist'
 import { packImage } from '../components/Home'
-import { priceOf } from '../lib'
+import { quoteHref } from '../lib'
 
 // Customer accounts: register / sign in, then a dashboard with orders, live tracking and tracking history.
 
@@ -41,9 +40,8 @@ export function useMe() {
 }
 
 const ACCOUNT_TYPES = [
-  ['individual', 'Individual', 'Home & personal', HomeIcon],
-  ['wholesale', 'Wholesale', 'Bulk & resellers', Store],
-  ['international', 'International', 'Outside Nigeria', Globe2],
+  ['wholesale', 'Wholesale', 'Bulk buyers in Nigeria', Store],
+  ['international', 'International', 'Bulk buyers abroad', Globe2],
 ]
 const COUNTRIES = ['Nigeria', 'Ghana', 'Benin', 'Togo', 'Cameroon', 'Côte d’Ivoire', 'Senegal', 'South Africa', 'Kenya', 'United Kingdom', 'Ireland', 'United States', 'Canada', 'Germany', 'France', 'Netherlands', 'Belgium', 'Italy', 'Spain', 'United Arab Emirates', 'Saudi Arabia', 'Qatar', 'China', 'India', 'Malaysia', 'Australia']
 
@@ -59,6 +57,30 @@ function Field({ icon: Icon, right, ...props }) {
       <input {...props} className="w-full bg-transparent text-[15px] text-ink outline-none placeholder:text-faint disabled:text-muted" />
       {right}
     </label>
+  )
+}
+
+// Password rules, checked as the customer types. The server checks the same rules.
+const PASSWORD_RULES = [
+  ['At least 8 characters', pw => pw.length >= 8],
+  ['At least one letter', pw => /[A-Za-z]/.test(pw)],
+  ['At least one number', pw => /\d/.test(pw)],
+]
+function passwordErrors(pw, confirm) {
+  const errs = PASSWORD_RULES.filter(([, ok]) => !ok(pw)).map(([l]) => `Password: ${l.toLowerCase()}.`)
+  if (pw !== confirm) errs.push('The two passwords do not match.')
+  return errs
+}
+function PasswordRules({ pw, confirm }) {
+  const rows = [...PASSWORD_RULES.map(([l, ok]) => [l, ok(pw)]), ['Both passwords match', pw.length > 0 && pw === confirm]]
+  return (
+    <ul className="grid grid-cols-2 gap-x-3 gap-y-1 px-1 text-[12px]" aria-label="Password requirements">
+      {rows.map(([l, ok]) => (
+        <li key={l} className={`flex items-center gap-1.5 ${ok ? 'text-grass' : 'text-faint'}`}>
+          <CheckCircle2 className={`h-3.5 w-3.5 shrink-0 ${ok ? 'fill-grass text-white dark:text-paper' : ''}`} />{l}
+        </li>
+      ))}
+    </ul>
   )
 }
 
@@ -84,7 +106,7 @@ export function AuthForms({ onDone: done, initial = 'login', compact = false }) 
   const onDone = async () => { await reload(); done?.() }
   const [tab, setTab] = useState(initial)
   useEffect(() => { setTab(initial) }, [initial])
-  const [f, setF] = useState({ name: '', email: '', phone: '', company: '', country: 'Nigeria', accountType: 'individual', password: '' })
+  const [f, setF] = useState({ name: '', email: '', phone: '', company: '', country: 'Nigeria', accountType: 'wholesale', password: '', confirm: '' })
   const [errors, setErrors] = useState([])
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState(null) // { title, text }
@@ -98,7 +120,10 @@ export function AuthForms({ onDone: done, initial = 'login', compact = false }) 
         await accountApi('/login', { method: 'POST', body: { email: f.email, password: f.password } })
         onDone()
       } else if (tab === 'register') {
-        const r = await accountApi('/register', { method: 'POST', body: f })
+        const bad = passwordErrors(f.password, f.confirm)
+        if (bad.length) { setErrors(bad); return }
+        const { confirm: _confirm, ...body } = f
+        const r = await accountApi('/register', { method: 'POST', body })
         if (r.verify) setNotice({ title: 'Check your email', text: `You've ordered with ${f.email} before. We've sent a link to confirm it's you. Open it to finish creating your account and see all your orders.` })
         else onDone()
       } else {
@@ -136,7 +161,7 @@ export function AuthForms({ onDone: done, initial = 'login', compact = false }) 
       <form onSubmit={submit} className="space-y-3.5">
         {tab === 'register' && (
           <>
-            <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Account type">
+            <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Account type">
               {ACCOUNT_TYPES.map(([v, l, d, Icon]) => (
                 <button type="button" key={v} role="radio" aria-checked={f.accountType === v}
                   onClick={() => setF({ ...f, accountType: v, country: v === 'international' ? (f.country === 'Nigeria' ? '' : f.country) : (f.country || 'Nigeria') })}
@@ -147,9 +172,9 @@ export function AuthForms({ onDone: done, initial = 'login', compact = false }) 
                 </button>
               ))}
             </div>
-            {f.accountType === 'wholesale' && <p className="rounded-lg bg-sun/15 px-3 py-2 text-[12.5px] text-ink">Wholesale accounts are checked by our team. You can order at normal prices straight away; wholesale prices appear once you're approved.</p>}
-            <Field icon={User} placeholder={f.accountType === 'individual' ? 'Full name' : 'Your full name'} value={f.name} onChange={set('name')} autoComplete="name" required />
-            {f.accountType !== 'individual' && <Field icon={Building2} placeholder={f.accountType === 'wholesale' ? 'Business / company name' : 'Company name (optional)'} value={f.company} onChange={set('company')} autoComplete="organization" required={f.accountType === 'wholesale'} />}
+            {f.accountType === 'wholesale' && <p className="rounded-lg bg-sun/15 px-3 py-2 text-[12.5px] text-ink">We supply in bulk only. Our team checks new wholesale accounts and will contact you with prices.</p>}
+            <Field icon={User} placeholder="Your full name" value={f.name} onChange={set('name')} autoComplete="name" required />
+            {<Field icon={Building2} placeholder={f.accountType === 'wholesale' ? 'Business / company name' : 'Company name (optional)'} value={f.company} onChange={set('company')} autoComplete="organization" required={f.accountType === 'wholesale'} />}
             <Field icon={Phone} type="tel" placeholder="Phone / WhatsApp" value={f.phone} onChange={set('phone')} autoComplete="tel" required />
             <label className={inputBox}>
               <Globe2 className="h-[18px] w-[18px] shrink-0 text-faint" strokeWidth={1.7} />
@@ -159,7 +184,11 @@ export function AuthForms({ onDone: done, initial = 'login', compact = false }) 
           </>
         )}
         <Field icon={Mail} type="email" placeholder="Email address" value={f.email} onChange={set('email')} autoComplete="email" required />
-        {tab !== 'link' && <PasswordField placeholder={tab === 'register' ? 'Create a password (8+ characters)' : 'Password'} value={f.password} onChange={set('password')} autoComplete={tab === 'register' ? 'new-password' : 'current-password'} required minLength={tab === 'register' ? 8 : undefined} />}
+        {tab !== 'link' && <PasswordField placeholder={tab === 'register' ? 'Create a password' : 'Password'} value={f.password} onChange={set('password')} autoComplete={tab === 'register' ? 'new-password' : 'current-password'} required minLength={tab === 'register' ? 8 : undefined} />}
+        {tab === 'register' && <>
+          <PasswordField placeholder="Confirm password" value={f.confirm} onChange={set('confirm')} autoComplete="new-password" required />
+          <PasswordRules pw={f.password} confirm={f.confirm} />
+        </>}
         {tab === 'login' && <div className="flex justify-end"><button type="button" onClick={() => { setTab('link'); setErrors([]) }} className="text-[13px] font-medium text-grass hover:underline">Forgot password? Email me a link</button></div>}
         {tab === 'link' && <p className="text-[13px] text-muted">We'll email you a one-time link to sign in. You can set a new password from your dashboard.</p>}
         <Errors list={errors} />
@@ -168,7 +197,7 @@ export function AuthForms({ onDone: done, initial = 'login', compact = false }) 
         </button>
         {tab === 'link' && <button type="button" onClick={() => setTab('login')} className="w-full text-center text-[13px] text-muted hover:text-ink">Back to password sign-in</button>}
       </form>
-      {!compact && tab === 'register' && <p className="mt-4 text-center text-[12px] text-faint">Your account keeps all your orders, tracking and delivery details in one place.</p>}
+      {!compact && tab === 'register' && <p className="mt-4 text-center text-[12px] text-faint">Your account keeps your bulk orders, tracking and invoices in one place.</p>}
     </div>
   )
 }
@@ -179,7 +208,6 @@ export function Shell({ children }) {
       <Nav />
       <div className="min-h-[70svh] bg-mist">{children}</div>
       <Footer />
-      <CartDrawer />
     </>
   )
 }
@@ -189,9 +217,9 @@ export function SignInPage({ onDone, initial = 'login' }) {
     <div className="mx-auto grid max-w-6xl items-center gap-10 px-5 py-14 lg:grid-cols-2 lg:py-20">
       <div className="hidden lg:block">
         <p className="text-[12px] font-semibold uppercase tracking-[0.2em] text-grass">Your Farmora account</p>
-        <h1 className="mt-3 font-display text-[44px] font-extrabold leading-[1.05] text-ink">Order, track and <span className="text-ruby">reorder</span> in one place.</h1>
+        <h1 className="mt-3 font-display text-[44px] font-extrabold leading-[1.05] text-ink">Bulk orders, tracked <span className="text-ruby">in one place.</span></h1>
         <ul className="mt-8 space-y-3 text-[15px] text-ink">
-          {['See every order and its status', 'Follow deliveries with live tracking', 'Full history of every tracking update', 'Faster checkout with saved details'].map(t => (
+          {['See every order and its status', 'Follow deliveries with live tracking', 'Full history of every tracking update', 'Invoices for every bulk order'].map(t => (
             <li key={t} className="flex items-center gap-3"><CheckCircle2 className="h-5 w-5 fill-grass text-white" />{t}</li>
           ))}
         </ul>
@@ -211,11 +239,10 @@ const TABS = [
   ['addresses', 'Addresses', MapPin], ['profile', 'Profile', UserCog],
 ]
 
-// Puts an order's items back in the cart and opens it (full load so the cart picks them up).
+// Opens the quote form pre-filled with an order's items, to order the same again.
 export function reorderItems(mode, items) {
-  const list = items.filter(i => i.productId)
-  try { sessionStorage.setItem('farmora-reorder', JSON.stringify({ mode, items: list.map(i => ({ productId: i.productId, sizeId: i.sizeId, qty: i.qty })) })) } catch { /* storage blocked */ }
-  window.location.href = '/cart'
+  const list = items.map(i => `${i.qty} × ${i.name} (${i.size})`).join(', ')
+  window.location.href = quoteHref({ type: mode === 'international' ? 'export' : 'wholesale', product: list })
 }
 
 function Progress({ status }) {
@@ -307,7 +334,7 @@ function SetPasswordNotice({ go }) {
 
 const TILES = [
   ['orders', 'My Orders', 'Track current and previous purchases.', ShoppingBag],
-  ['reorder', 'Reorder', 'Buy previously purchased products again.', RotateCcw],
+  ['reorder', 'Reorder', 'Request the same products again.', RotateCcw],
   ['addresses', 'My Addresses', 'Save delivery destinations.', MapPin],
   ['invoices', 'My Invoices', 'Access receipts and invoices.', FileText],
   ['wishlist', 'My Wishlist', 'Save favourite products.', Heart],
@@ -316,10 +343,10 @@ const TILES = [
 
 function WholesaleBanner({ me, go }) {
   if (me.accountType === 'wholesale' && me.wholesaleStatus === 'approved') return (
-    <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-grass/30 bg-grass/10 p-4 text-[14px] text-ink"><BadgeCheck className="h-5 w-5 text-grass" /><span className="flex-1"><b>Wholesale account.</b> You see wholesale prices across the shop.</span><Link to="/shop" className="font-semibold text-grass hover:underline">Shop wholesale →</Link></div>
+    <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-grass/30 bg-grass/10 p-4 text-[14px] text-ink"><BadgeCheck className="h-5 w-5 text-grass" /><span className="flex-1"><b>Wholesale account approved.</b> Request a bulk quote any time.</span><Link to={quoteHref()} className="font-semibold text-grass hover:underline">Request bulk quote →</Link></div>
   )
   if (me.wholesaleStatus === 'pending') return (
-    <div className="flex items-center gap-3 rounded-2xl border border-sun/60 bg-sun/15 p-4 text-[14px] text-ink"><Hourglass className="h-5 w-5" /><span><b>Wholesale request under review.</b> We'll email you once it's approved. Until then you can order at normal prices.</span></div>
+    <div className="flex items-center gap-3 rounded-2xl border border-sun/60 bg-sun/15 p-4 text-[14px] text-ink"><Hourglass className="h-5 w-5" /><span><b>Wholesale request under review.</b> We'll email you once it's approved. You can request a bulk quote in the meantime.</span></div>
   )
   if (me.wholesaleStatus === 'rejected') return (
     <div className="rounded-2xl border border-ink/10 bg-paper p-4 text-[14px] text-muted">Your wholesale request wasn't approved this time. <button onClick={() => go('profile')} className="font-semibold text-grass hover:underline">Tell us more and apply again</button>.</div>
@@ -360,7 +387,7 @@ function Overview({ me, orders, events, go }) {
           <div className="rounded-2xl border border-dashed border-ink/20 bg-paper p-10 text-center">
             <Package className="mx-auto h-8 w-8 text-faint" strokeWidth={1.5} />
             <p className="mt-3 text-[14.5px] text-muted">{orders.length ? 'No orders in progress right now.' : "You haven't placed an order yet."}</p>
-            <Link to="/shop" className="btn-micro mt-5 inline-flex items-center gap-2 rounded-full bg-grass px-6 py-3 text-[14px] font-semibold text-white hover:bg-grass-deep"><ShoppingCart className="h-4 w-4" /> Shop palm oil</Link>
+            <Link to={quoteHref()} className="btn-micro mt-5 inline-flex items-center gap-2 rounded-full bg-grass px-6 py-3 text-[14px] font-semibold text-white hover:bg-grass-deep"><FileText className="h-4 w-4" /> Request bulk quote</Link>
           </div>
         )}
       </section>
@@ -387,7 +414,7 @@ function Orders({ orders }) {
             <button key={v} role="tab" aria-selected={filter === v} onClick={() => setFilter(v)} className={`rounded-full px-4 py-1.5 text-[13px] font-medium ${filter === v ? 'bg-grass text-white' : 'text-muted hover:text-ink'}`}>{l}</button>
           ))}
         </div>
-        <Link to="/shop" className="btn-micro rounded-full border border-ink/20 bg-paper px-5 py-2 text-[13px] font-medium text-ink hover:border-grass hover:text-grass">New order <span className="arr">→</span></Link>
+        <Link to={quoteHref()} className="btn-micro rounded-full border border-ink/20 bg-paper px-5 py-2 text-[13px] font-medium text-ink hover:border-grass hover:text-grass">Request bulk quote <span className="arr">→</span></Link>
       </div>
       {shown.length ? <div className="space-y-3">{shown.map(o => <OrderRow key={o.reference} o={o} />)}</div>
         : <p className="rounded-2xl border border-dashed border-ink/20 bg-paper p-10 text-center text-[14px] text-muted">{orders.length ? 'No orders in this list.' : "You haven't placed an order yet."}</p>}
@@ -396,7 +423,7 @@ function Orders({ orders }) {
 }
 
 function Reorder({ orders }) {
-  const { products, mode, add, openDrawer, price: fmtPrice } = useCart()
+  const { products } = useCart()
   const past = orders.filter(o => o.status !== 'cancelled' && o.items.some(i => i.productId))
   // every product+size bought before, most recent first
   const bought = []
@@ -404,13 +431,13 @@ function Reorder({ orders }) {
     if (!i.productId || bought.some(b => b.productId === i.productId && b.sizeId === i.sizeId)) continue
     const product = products.find(p => p.id === i.productId)
     const size = product?.sizes.find(s => s.id === i.sizeId)
-    if (product && size) bought.push({ ...i, product, size, last: o.createdAt })
+    if (product && size) bought.push({ ...i, product, size, last: o.createdAt, deliveryType: o.deliveryType })
   }
-  if (!past.length) return <p className="rounded-2xl border border-dashed border-ink/20 bg-paper p-10 text-center text-[14px] text-muted">Nothing to reorder yet. Products you buy will appear here.</p>
+  if (!past.length) return <p className="rounded-2xl border border-dashed border-ink/20 bg-paper p-10 text-center text-[14px] text-muted">Nothing to reorder yet. Products from your orders will appear here.</p>
   return (
     <div className="space-y-8">
       <section>
-        <h2 className="mb-1 font-display text-[19px] font-bold text-ink">Buy again</h2>
+        <h2 className="mb-1 font-display text-[19px] font-bold text-ink">Order again</h2>
         <p className="mb-4 text-[14px] text-muted">Products you've ordered before.</p>
         <div className="grid gap-3 sm:grid-cols-2">
           {bought.map(b => (
@@ -418,10 +445,10 @@ function Reorder({ orders }) {
               <Link to={`/product/${b.productId}`} className="h-16 w-16 shrink-0 rounded-xl border border-ink/10 bg-white"><img src={packImage(b.product, b.size)} alt="" className="h-full w-full object-contain p-1" /></Link>
               <div className="min-w-0 flex-1">
                 <Link to={`/product/${b.productId}`} className="block truncate font-display text-[15px] font-bold text-ink hover:text-grass">{b.product.name}</Link>
-                <p className="text-[12.5px] text-muted">{b.size.label} · {fmtPrice(priceOf(b.size, mode))}</p>
+                <p className="text-[12.5px] text-muted">{b.size.label}</p>
                 <p className="text-[11.5px] text-faint">Last ordered {date(b.last)}</p>
               </div>
-              <button onClick={() => { add(b.product, b.size, b.qty); openDrawer() }} className="btn-micro shrink-0 rounded-full bg-grass px-4 py-2 text-[13px] font-semibold text-white hover:bg-grass-deep">Add {b.qty > 1 ? `×${b.qty}` : ''}</button>
+              <Link to={quoteHref({ type: b.deliveryType === 'international' ? 'export' : 'wholesale', product: b.product.name, size: b.size.label, qty: b.qty })} className="btn-micro shrink-0 rounded-full bg-grass px-4 py-2 text-[13px] font-semibold text-white hover:bg-grass-deep">Request quote</Link>
             </div>
           ))}
         </div>
@@ -435,7 +462,7 @@ function Reorder({ orders }) {
                 <p className="font-display font-bold text-ink">{o.reference} <span className="ml-1 text-[12px] font-normal text-faint">{date(o.createdAt)}</span></p>
                 <p className="mt-1 text-[13px] text-muted">{o.items.map(i => `${i.qty} × ${i.name} (${i.size})`).join(', ')}</p>
               </div>
-              <button onClick={() => reorderItems(o.deliveryType, o.items)} className="btn-micro flex items-center gap-2 rounded-full border border-grass px-4 py-2 text-[13px] font-semibold text-grass hover:bg-grass hover:text-white"><RotateCcw className="h-4 w-4" /> Reorder all</button>
+              <button onClick={() => reorderItems(o.deliveryType, o.items)} className="btn-micro flex items-center gap-2 rounded-full border border-grass px-4 py-2 text-[13px] font-semibold text-grass hover:bg-grass hover:text-white"><RotateCcw className="h-4 w-4" /> Request again</button>
             </div>
           ))}
         </div>
@@ -474,7 +501,7 @@ function Invoices({ orders }) {
 
 function Wishlist() {
   const { ids } = useWishlist()
-  const { products, mode, add, openDrawer, price: fmtPrice } = useCart()
+  const { products, mode } = useCart()
   const items = ids.map(id => products.find(p => p.id === id)).filter(Boolean)
   if (!items.length) return (
     <div className="rounded-2xl border border-dashed border-ink/20 bg-paper p-10 text-center">
@@ -495,9 +522,9 @@ function Wishlist() {
               <Link to={`/product/${p.id}`} className="grid aspect-[4/3] place-items-center overflow-hidden rounded-xl bg-white"><img src={size ? packImage(p, size) : p.image} alt="" className="h-full w-full object-contain p-2" /></Link>
               <Link to={`/product/${p.id}`} className="mt-3 font-display text-[16px] font-bold text-ink hover:text-grass">{p.name}</Link>
               <p className="text-[12.5px] text-muted">{p.tag}</p>
-              {size && <p className="mt-1 text-[14px] font-semibold text-grass">{size.label} · {fmtPrice(priceOf(size, mode))}</p>}
+              {size && <p className="mt-1 text-[13px] font-semibold text-grass">Bulk price on request</p>}
               <div className="mt-auto flex gap-2 pt-4">
-                {size && <button onClick={() => { add(p, size); openDrawer() }} className="btn-micro flex-1 rounded-full bg-grass py-2.5 text-[13px] font-semibold text-white hover:bg-grass-deep">Add to cart</button>}
+                {size && <Link to={quoteHref({ type: mode === 'international' ? 'export' : 'wholesale', product: p.name, size: size.label })} className="btn-micro flex-1 rounded-full bg-grass py-2.5 text-center text-[13px] font-semibold text-white hover:bg-grass-deep">Request quote</Link>}
                 <Link to={`/product/${p.id}`} className="rounded-full border border-ink/15 px-4 py-2.5 text-[13px] font-semibold text-ink hover:border-grass hover:text-grass">View</Link>
               </div>
             </div>
@@ -562,6 +589,9 @@ function WholesaleApply({ me, reload }) {
   const [note, setNote] = useState('')
   const [msg, setMsg] = useState(null)
   const type = { individual: 'Individual', wholesale: 'Wholesale', international: 'International' }[me.accountType] || 'Individual'
+  if (me.accountType === 'international') return (
+    <div className="rounded-2xl border border-ink/10 bg-paper p-6 lg:col-span-2"><h2 className="font-display text-[18px] font-bold text-ink">Account type: International</h2><p className="mt-2 text-[14px] text-muted">Request an export quotation any time and our team will reply with prices and shipping.</p></div>
+  )
   const status = me.wholesaleStatus
   async function apply(e) {
     e.preventDefault(); setMsg(null)
@@ -571,11 +601,11 @@ function WholesaleApply({ me, reload }) {
   return (
     <div className="rounded-2xl border border-ink/10 bg-paper p-6 lg:col-span-2">
       <h2 className="font-display text-[18px] font-bold text-ink">Account type: {type}{status === 'approved' && ' · wholesale approved'}{status === 'pending' && ' · wholesale pending'}</h2>
-      {status === 'approved' ? <p className="mt-2 text-[14px] text-muted">You see wholesale prices on every product where we've set one.</p>
+      {status === 'approved' ? <p className="mt-2 text-[14px] text-muted">Your wholesale account is approved. Request a bulk quote any time.</p>
         : status === 'pending' ? <p className="mt-2 text-[14px] text-muted">Your wholesale request is being reviewed. We'll email you.</p>
         : (
           <form onSubmit={apply} className="mt-3 grid gap-3 sm:grid-cols-[1fr_1.4fr_auto] sm:items-start">
-            <p className="text-[14px] text-muted sm:col-span-3">Buying in bulk or reselling? Apply for a wholesale account to unlock wholesale prices.</p>
+            <p className="text-[14px] text-muted sm:col-span-3">We supply in bulk only. Apply for a wholesale account so our team can set up your bulk pricing.</p>
             <Field icon={Building2} placeholder="Business / company name" value={company} onChange={e => setCompany(e.target.value)} required />
             <Field icon={Store} placeholder="What you buy and roughly how much (optional)" value={note} onChange={e => setNote(e.target.value)} />
             <button className="btn-micro rounded-full bg-ink px-5 py-3 text-[14px] font-semibold text-paper">Apply</button>
@@ -589,7 +619,7 @@ function WholesaleApply({ me, reload }) {
 function Profile({ me, reload }) {
   const [f, setF] = useState({ name: me.name, phone: me.phone || '', company: me.company || '', country: me.country || '' })
   const [msg, setMsg] = useState(null)
-  const [pw, setPw] = useState({ current: '', password: '' })
+  const [pw, setPw] = useState({ current: '', password: '', confirm: '' })
   const [pwMsg, setPwMsg] = useState(null)
   async function save(e) {
     e.preventDefault(); setMsg(null)
@@ -598,7 +628,9 @@ function Profile({ me, reload }) {
   }
   async function savePw(e) {
     e.preventDefault(); setPwMsg(null)
-    try { await accountApi('/password', { method: 'POST', body: pw }); setPw({ current: '', password: '' }); setPwMsg({ ok: true, text: me.hasPassword ? 'Password changed.' : 'Password set. You can now sign in with it.' }); reload() }
+    const bad = passwordErrors(pw.password, pw.confirm)
+    if (bad.length) return setPwMsg({ ok: false, text: bad.join(' ') })
+    try { await accountApi('/password', { method: 'POST', body: { current: pw.current, password: pw.password } }); setPw({ current: '', password: '', confirm: '' }); setPwMsg({ ok: true, text: me.hasPassword ? 'Password changed.' : 'Password set. You can now sign in with it.' }); reload() }
     catch (err) { setPwMsg({ ok: false, text: err.message }) }
   }
   const Msg = ({ m }) => m && <p className={`text-[13.5px] ${m.ok ? 'text-grass' : 'text-ruby'}`} role="status">{m.text}</p>
@@ -617,7 +649,9 @@ function Profile({ me, reload }) {
       <form onSubmit={savePw} className="space-y-3.5 rounded-2xl border border-ink/10 bg-paper p-6">
         <h2 className="font-display text-[18px] font-bold text-ink">{me.hasPassword ? 'Change password' : 'Set a password'}</h2>
         {me.hasPassword && <PasswordField placeholder="Current password" value={pw.current} onChange={e => setPw({ ...pw, current: e.target.value })} autoComplete="current-password" required />}
-        <PasswordField placeholder="New password (8+ characters)" value={pw.password} onChange={e => setPw({ ...pw, password: e.target.value })} autoComplete="new-password" required minLength={8} />
+        <PasswordField placeholder="New password" value={pw.password} onChange={e => setPw({ ...pw, password: e.target.value })} autoComplete="new-password" required minLength={8} />
+        <PasswordField placeholder="Confirm new password" value={pw.confirm} onChange={e => setPw({ ...pw, confirm: e.target.value })} autoComplete="new-password" required />
+        <PasswordRules pw={pw.password} confirm={pw.confirm} />
         <Msg m={pwMsg} />
         <button className="btn-micro rounded-full bg-ink px-6 py-3 text-[14px] font-semibold text-paper">{me.hasPassword ? 'Change password' : 'Set password'}</button>
         <p className="pt-2 text-[12.5px] text-faint">Member since {date(me.since)}.</p>

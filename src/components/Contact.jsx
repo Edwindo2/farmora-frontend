@@ -4,7 +4,7 @@ import { Words } from './Motion'
 import { Mail, Phone, MapPin, Clock, ArrowRight, MessageCircle } from 'lucide-react'
 import { useSite, telHref, waHref } from '../site'
 
-const TOPICS = ['General question', 'Bulk / export order', 'Local delivery', 'Partnership / supply']
+const TOPICS = ['Bulk / export order', 'Become a distributor', 'General question', 'Delivery / logistics']
 
 // Contact details come from the admin (Location & contact).
 function details(c) {
@@ -30,11 +30,16 @@ export default function Contact() {
   // "Request export quotation" / "Wholesale" links arrive as /?quote=export#contact
   const { search } = useLocation()
   useEffect(() => {
-    const q = new URLSearchParams(search).get('quote')
-    if (q === 'export' || q === 'wholesale') {
-      setForm(f => ({ ...f, topic: 'Bulk / export order', message: f.message || (q === 'export'
-        ? 'Hello Farmora, I would like an export quotation.\nProduct and pack size:\nQuantity:\nDestination country and port:\n'
-        : 'Hello Farmora, I would like wholesale prices.\nProduct and pack size:\nQuantity:\nDelivery location:\n') }))
+    const params = new URLSearchParams(search)
+    const q = params.get('quote')
+    const product = [params.get('product'), params.get('size')].filter(Boolean).join(', ')
+    const qty = params.get('qty') || ''
+    if (q === 'distributor') {
+      setForm(f => ({ ...f, topic: 'Become a distributor', message: 'Hello Farmora, I would like to become a distributor.\nBusiness name:\nLocation / area covered:\nExpected monthly volume:\n' }))
+    } else if (q === 'export' || q === 'wholesale') {
+      setForm(f => ({ ...f, topic: 'Bulk / export order', message: q === 'export'
+        ? `Hello Farmora, I would like an export quotation.\nProduct and pack size: ${product}\nQuantity: ${qty}\nDestination country and port:\n`
+        : `Hello Farmora, I would like a bulk quote.\nProduct and pack size: ${product}\nQuantity: ${qty}\nDelivery location:\n` }))
     }
   }, [search])
 

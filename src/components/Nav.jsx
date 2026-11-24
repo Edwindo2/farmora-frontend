@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Sun, Moon, Menu, X, ShoppingCart, Search, ChevronDown, Home, Mail, Phone, MapPin, LogOut, LayoutDashboard, ListOrdered, History, UserCog, LogIn } from 'lucide-react'
+import { Sun, Moon, Menu, X, Search, ChevronDown, Home, Mail, Phone, MapPin, LogOut, LayoutDashboard, ListOrdered, History, UserCog, LogIn } from 'lucide-react'
 import { useTheme } from '../lib'
 import { useCart } from '../cart'
 import { useSite, telHref } from '../site'
@@ -116,9 +116,8 @@ function useMenu() {
   return [
     ['Home', '/', null, Home],
     ['About Us', null, [['Our story', '/#about'], ['Why choose Farmora', '/#why'], ['Contact us', '/#contact']]],
-    ['Our Products', null, [...products.slice(0, 6).map(p => [p.name, '/shop']), ['All products', '/shop']]],
-    ['Shop Online', null, [['Shop now', '/shop'], ['Place an order', '/shop#order'], ['Track my orders', '/account'], ['My dashboard', '/account?tab=history']]],
-    ['Wholesale', null, [['Wholesale & bulk prices', '/?quote=wholesale#contact'], ['For local buyers', '/#buyers']]],
+    ['Our Products', null, [...products.slice(0, 6).map(p => [p.name, `/product/${p.id}`]), ['All products', '/shop']]],
+    ['Distributors', null, [['Become a distributor', '/?quote=distributor#contact'], ['Request bulk quote', '/?quote=wholesale#contact'], ['For local buyers', '/#buyers'], ['Track my orders', '/account']]],
     ['Global Trade', null, [['For international buyers', '/#buyers'], ['Request export quotation', '/?quote=export#contact']]],
     ['FAQs', '/#faq'],
     ['Contact Us', '/#contact'],
@@ -161,7 +160,6 @@ function MobileAccount({ close }) {
 }
 
 export default function Nav() {
-  const { count, openDrawer } = useCart()
   const [theme, toggleTheme] = useTheme()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState(false)
@@ -187,7 +185,7 @@ export default function Nav() {
           <Logo />
           <nav className="mx-auto hidden items-center gap-0.5 2xl:flex" aria-label="Main">
             {menu.map(([label, href, items, icon]) => (
-              <MenuItem key={label} label={label} href={href} items={items} icon={icon} active={label === 'Home' ? pathname === '/' : label === 'Shop Online' && pathname === '/shop'} />
+              <MenuItem key={label} label={label} href={href} items={items} icon={icon} active={label === 'Home' ? pathname === '/' : label === 'Our Products' && pathname === '/shop'} />
             ))}
           </nav>
           <div className="ml-auto flex shrink-0 items-center gap-2 2xl:ml-0">
@@ -198,10 +196,6 @@ export default function Nav() {
             <AccountMenu />
             <button onClick={() => setSearch(s => !s)} className="btn-micro grid h-10 w-10 place-items-center rounded-full bg-grass text-white hover:bg-grass-deep md:h-11 md:w-11" aria-label="Search" aria-expanded={search}>
               <Search className="h-[18px] w-[18px]" strokeWidth={2} />
-            </button>
-            <button onClick={openDrawer} className="btn-micro relative grid h-10 w-10 place-items-center rounded-full bg-grass text-white hover:bg-grass-deep md:h-11 md:w-11" aria-label={`Your cart, ${count} item${count === 1 ? '' : 's'}`}>
-              <ShoppingCart className="h-[18px] w-[18px]" strokeWidth={2} />
-              <span key={count} className={`absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-ruby px-1 text-[10.5px] font-semibold text-white ring-2 ring-paper ${count ? 'bump' : ''}`}>{count}</span>
             </button>
             <button onClick={() => setOpen(o => !o)} className={`${iconBtn} 2xl:hidden`} aria-label="Menu" aria-expanded={open}>
               {open ? <X className="h-[18px] w-[18px]" /> : <Menu className="h-[18px] w-[18px]" />}

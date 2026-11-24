@@ -12,9 +12,6 @@ import { AuthProvider } from './auth.jsx'
 import { WishlistProvider } from './wishlist.jsx'
 import { LoginPage, RegisterPage } from './pages/Auth.jsx'
 import Product from './pages/Product.jsx'
-import Cart from './pages/Cart.jsx'
-import Checkout from './pages/Checkout.jsx'
-import OrderSuccess from './pages/OrderSuccess.jsx'
 import Invoice from './pages/Invoice.jsx'
 import { initTranslation } from './translate.jsx'
 import { installPlatform } from './platform.js'
@@ -46,9 +43,10 @@ createRoot(document.getElementById('root')).render(
         <Route path="/" element={<App />} />
         <Route path="/shop" element={<ShopPage />} />
         <Route path="/product/:slug" element={<Product />} />
-        <Route path="/cart" element={<Cart />} />
-        <Route path="/checkout" element={<Checkout />} />
-        <Route path="/order-success/:reference" element={<OrderSuccess />} />
+        {/* wholesale only: no cart or checkout, buyers request a quote instead */}
+        <Route path="/cart" element={<Navigate to="/?quote=wholesale#contact" replace />} />
+        <Route path="/checkout" element={<Navigate to="/?quote=wholesale#contact" replace />} />
+        <Route path="/order-success/:reference" element={<Navigate to="/account" replace />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/track" element={<TrackRedirect />} />

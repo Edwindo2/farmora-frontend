@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { MapPin, Phone, Star, Pencil, Trash2 } from 'lucide-react'
-import { NG_STATES } from './Order'
+
+export const NG_STATES = ['Abia','Adamawa','Akwa Ibom','Anambra','Bauchi','Bayelsa','Benue','Borno','Cross River','Delta','Ebonyi','Edo','Ekiti','Enugu','FCT (Abuja)','Gombe','Imo','Jigawa','Kaduna','Kano','Katsina','Kebbi','Kogi','Kwara','Lagos','Nasarawa','Niger','Ogun','Ondo','Osun','Oyo','Plateau','Rivers','Sokoto','Taraba','Yobe','Zamfara']
 
 // Saved delivery addresses: the form and the card, used at checkout and in the dashboard.
 

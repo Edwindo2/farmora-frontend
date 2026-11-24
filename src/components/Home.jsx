@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { ShoppingCart, ArrowRight, Leaf, ShieldCheck, Globe2, Handshake, Headset, CheckCircle2, ChevronLeft, ChevronRight, Star, Check } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { FileText, ArrowRight, Leaf, ShieldCheck, Globe2, Handshake, Headset, CheckCircle2, ChevronLeft, ChevronRight, Star, Check } from 'lucide-react'
 import { useCart } from '../cart'
 import { WishButton } from '../wishlist'
 import { useSite } from '../site'
-import { money, priceOf, currencyOf } from '../lib'
+import { quoteHref } from '../lib'
 
 // Home page sections, laid out like the Farmora guide design.
 
-const QUOTE = '/?quote=export#contact'
+const QUOTE = quoteHref({ type: 'export' })
+const BULK = quoteHref()
+const DISTRIBUTOR = quoteHref({ type: 'distributor' })
 
 /* ---------- hero ---------- */
 export function HomeHero() {
@@ -20,21 +22,21 @@ export function HomeHero() {
       <div className="absolute inset-0 bg-gradient-to-b from-paper from-35% via-paper/80 via-55% to-transparent to-75% md:bg-gradient-to-r md:from-paper md:from-0% md:via-paper/70 md:via-40% md:to-transparent md:to-70%" />
       <div className="relative mx-auto grid min-h-[560px] max-w-7xl items-start px-5 pb-[300px] pt-10 sm:pb-[340px] md:min-h-[600px] md:items-center md:py-14 lg:px-8">
         <div className="max-w-[560px]">
-          <h1 className="reveal font-display text-[52px] font-extrabold leading-[0.95] tracking-[-0.02em] sm:text-[68px] lg:text-[84px]">
-            <span className="block text-ink">Premium</span>
-            <span className="block text-ruby">Palm Oil</span>
+          <h1 className="reveal font-display text-[38px] font-extrabold leading-[1.02] tracking-[-0.02em] sm:text-[50px] lg:text-[60px]">
+            <span className="block text-ink">Reliable Palm Oil Supply.</span>
+            <span className="block text-ruby">Built for Wholesale.</span>
           </h1>
-          <p className="reveal mt-5 font-script text-[22px] font-semibold italic text-ink sm:text-[26px]" style={{ '--d': '.1s' }}>Naturally Sourced. Globally Trusted.</p>
-          <p className="reveal mt-4 max-w-[30em] text-[16px] leading-relaxed text-ink/80 sm:text-[17px]" style={{ '--d': '.18s' }}>
-            Farmora Palm Oil is 100% pure, high quality and rich in natural goodness, perfect for homes, businesses and international markets.
+          <p className="reveal mt-5 max-w-[30em] text-[16px] leading-relaxed text-ink/80 sm:text-[17px]" style={{ '--d': '.12s' }}>
+            Farmora AgriTrade supplies quality Nigerian palm oil to wholesalers, distributors, retailers, food businesses and bulk buyers, in Nigeria and abroad.
           </p>
+          <p className="reveal mt-4 text-[15px] font-semibold text-ink sm:text-[16px]" style={{ '--d': '.18s' }}>Bulk Supply <span className="mx-1.5 text-ruby">•</span> Reliable Sourcing <span className="mx-1.5 text-ruby">•</span> Nationwide &amp; Export Delivery</p>
           <div className="reveal mt-8 flex flex-wrap gap-3" style={{ '--d': '.26s' }}>
-            <Link to="/shop" className="btn-micro inline-flex items-center gap-2.5 rounded-full bg-ruby px-6 py-3.5 text-[15px] font-semibold text-white shadow-lg shadow-ruby/25 hover:brightness-110">
-              <ShoppingCart className="h-[18px] w-[18px]" /> Shop Now <ArrowRight className="arr h-4 w-4" />
+            <Link to={BULK} className="btn-micro inline-flex items-center gap-2.5 rounded-full bg-grass px-6 py-3.5 text-[15px] font-semibold text-white shadow-lg shadow-grass/25 hover:bg-grass-deep">
+              <FileText className="h-[18px] w-[18px]" /> Request Bulk Quote <ArrowRight className="arr h-4 w-4" />
             </Link>
-            <a href={QUOTE.slice(1)} className="btn-micro inline-flex items-center gap-2 rounded-full border-2 border-ink bg-paper/80 px-6 py-3 text-[15px] font-semibold text-ink backdrop-blur hover:bg-ink hover:text-paper">
-              Request Export Quotation <ArrowRight className="arr h-4 w-4" />
-            </a>
+            <Link to={DISTRIBUTOR} className="btn-micro inline-flex items-center gap-2 rounded-full border-2 border-ink bg-paper/80 px-6 py-3 text-[15px] font-semibold text-ink backdrop-blur hover:bg-ink hover:text-paper">
+              Become a Distributor <ArrowRight className="arr h-4 w-4" />
+            </Link>
           </div>
         </div>
       </div>
@@ -56,7 +58,7 @@ export function HomeHero() {
       <div className="absolute bottom-0 right-0 hidden lg:block">
         <div className="relative rounded-tl-[140px] bg-gradient-to-br from-[#2a9a3f] to-[#145a24] py-8 pl-24 pr-10 text-white shadow-2xl">
           <ul className="space-y-2.5">
-            {['Rich in Nutrients', 'Longer Shelf Life', 'Excellent Quality', 'Trusted Worldwide'].map((t, i) => (
+            {['Bulk & Container Loads', 'Consistent Quality', 'Competitive Bulk Prices', 'Local & Export Supply'].map((t, i) => (
               <li key={t} className="reveal flex items-center gap-3 text-[15px] font-medium" style={{ '--d': `${0.3 + i * 0.08}s` }}>
                 <span className="grid h-6 w-6 place-items-center rounded-full bg-sun text-[#145a24]"><Check className="h-4 w-4" strokeWidth={3} /></span>{t}
               </li>
@@ -107,10 +109,7 @@ export function packImage(product, size) {
 }
 
 function PackCard({ product, size, index }) {
-  const { price: fmtPrice } = useCart()
-  const { mode, add } = useCart()
-  const [added, setAdded] = useState(false)
-  const price = priceOf(size, mode)
+  const { mode } = useCart()
   return (
     <article className="reveal lift group relative flex flex-col items-center rounded-2xl border border-ink/10 bg-paper p-4 text-center shadow-sm hover:shadow-lg" style={{ '--d': `${index * 0.08}s` }}>
       <WishButton productId={product.id} className="absolute right-2.5 top-2.5 z-10 h-9 w-9 rounded-full bg-paper/90 text-ink shadow-sm hover:text-ruby" />
@@ -119,13 +118,13 @@ function PackCard({ product, size, index }) {
       </Link>
       <h3 className="mt-3 font-display text-[17px] font-bold text-ink">{size.label.replace(/\blitres?\b/i, m => m[0].toUpperCase() + m.slice(1))}</h3>
       <p className="text-[12.5px] text-muted">{product.name}</p>
-      <p className="mb-3 mt-1 font-display text-[15px] font-semibold text-grass">{fmtPrice(price)}</p>
-      <button
-        onClick={() => { add(product, size); setAdded(true); setTimeout(() => setAdded(false), 1500); }}
+      <p className="mb-3 mt-1 text-[12.5px] font-medium text-grass">Bulk price on request</p>
+      <Link
+        to={quoteHref({ type: mode === 'international' ? 'export' : 'wholesale', product: product.name, size: size.label })}
         className="btn-micro mt-auto inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-grass px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-grass-deep sm:px-5"
       >
-        {added ? <><Check className="h-4 w-4" /> Added</> : <><ShoppingCart className="h-4 w-4" /> Add to Cart</>}
-      </button>
+        <FileText className="h-4 w-4" /> Request Quote
+      </Link>
     </article>
   )
 }
@@ -155,7 +154,7 @@ export function ProductsSection() {
 }
 
 function WhyChoose() {
-  const points = ['Premium Quality Palm Oil', 'Competitive Prices', 'Reliable Supply Chain', 'Local & International Delivery', 'Trusted Brand – Farmora™']
+  const points = ['Premium Quality Palm Oil', 'Competitive Bulk Prices', 'Reliable Supply Chain', 'Local & International Delivery', 'Trusted Brand – Farmora™']
   return (
     <aside id="why" className="reveal relative overflow-hidden rounded-2xl border border-ink/10 bg-gradient-to-br from-[#f3f9ec] via-paper to-[#e5f2d8] p-7 dark:from-[#16241a] dark:via-paper dark:to-[#1b2f1f]" data-reveal="right">
       <img src="/journey/1-bunch.jpg" alt="" aria-hidden="true" className="absolute -bottom-6 -right-10 h-56 w-56 rounded-full object-cover opacity-90 [mask-image:radial-gradient(circle,black_55%,transparent_72%)]" />
@@ -179,7 +178,6 @@ function Tick({ children }) {
 
 export function BuyerBanners() {
   const { setMode } = useCart()
-  const nav = useNavigate()
   return (
     <section id="buyers" className="px-5 pb-16 lg:px-8">
       <div className="mx-auto grid max-w-7xl gap-5 lg:grid-cols-2">
@@ -188,9 +186,9 @@ export function BuyerBanners() {
           <div className="absolute inset-0 bg-gradient-to-r from-[#145a24] from-35% via-[#145a24]/75 via-55% to-transparent to-80%" />
           <div className="relative max-w-[310px] p-7 md:p-8">
             <h2 className="font-display text-[28px] font-bold leading-tight">For Local Buyers</h2>
-            <p className="mt-2 text-[16px] text-white/90">Get the best palm oil for your family, business and market.</p>
-            <ul className="mt-5 space-y-2"><Tick>Retail &amp; Wholesale Prices</Tick><Tick>Fast Nationwide Delivery</Tick><Tick>Simple, Secure Payment</Tick></ul>
-            <button onClick={() => { setMode('local'); nav('/shop') }} className="btn-micro mt-6 inline-flex items-center gap-2 rounded-full bg-sun px-6 py-3 text-[14px] font-bold text-[#123d1a] hover:brightness-105">Shop Local Now <ArrowRight className="arr h-4 w-4" /></button>
+            <p className="mt-2 text-[16px] text-white/90">Bulk palm oil for wholesalers, distributors, retailers and food businesses.</p>
+            <ul className="mt-5 space-y-2"><Tick>Wholesale &amp; Bulk Prices</Tick><Tick>Fast Nationwide Delivery</Tick><Tick>Distributor Partnerships</Tick></ul>
+            <Link to={BULK} onClick={() => setMode('local')} className="btn-micro mt-6 inline-flex items-center gap-2 rounded-full bg-sun px-6 py-3 text-[14px] font-bold text-[#123d1a] hover:brightness-105">Request Bulk Quote <ArrowRight className="arr h-4 w-4" /></Link>
           </div>
         </article>
         <article className="reveal relative min-h-[300px] overflow-hidden rounded-2xl bg-[#0b4a94] text-white shadow-lg" data-reveal="right">
@@ -200,7 +198,7 @@ export function BuyerBanners() {
             <h2 className="font-display text-[28px] font-bold leading-tight">For International Buyers</h2>
             <p className="mt-2 text-[16px] text-white/90">Source premium palm oil from Nigeria.</p>
             <ul className="mt-5 space-y-2"><Tick>Request Export Quotation</Tick><Tick>Bulk Orders</Tick><Tick>Worldwide Shipping</Tick></ul>
-            <a href={QUOTE.slice(1)} onClick={() => setMode('international')} className="btn-micro mt-6 inline-flex items-center gap-2 rounded-full bg-sun px-6 py-3 text-[14px] font-bold text-[#0b2f5e] hover:brightness-105">Request Export Quotation <ArrowRight className="arr h-4 w-4" /></a>
+            <Link to={QUOTE} onClick={() => setMode('international')} className="btn-micro mt-6 inline-flex items-center gap-2 rounded-full bg-sun px-6 py-3 text-[14px] font-bold text-[#0b2f5e] hover:brightness-105">Request Export Quotation <ArrowRight className="arr h-4 w-4" /></Link>
           </div>
         </article>
       </div>
@@ -226,7 +224,7 @@ function About() {
       <div>
         <h2 className="font-display text-[19px] font-bold text-ink">About Farmora</h2>
         <p className="mt-2 text-[14px] leading-relaxed text-muted">
-          Farmora AgriTrade Limited is a palm oil brand committed to delivering pure, high-quality palm oil to homes, businesses and markets worldwide.
+          Farmora AgriTrade Limited is a wholesale palm oil supplier, delivering pure, high-quality palm oil in bulk to businesses and markets across Nigeria and worldwide.
         </p>
         {more && (
           <p className="mt-2 text-[14px] leading-relaxed text-muted">

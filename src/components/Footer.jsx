@@ -6,8 +6,8 @@ import Social from './Social'
 import { useSite, telHref } from '../site'
 
 const COLUMNS = [
-  ['Quick Links', [['Home', '/'], ['About Us', '/#about'], ['Our Products', '/#products'], ['Shop Online', '/shop'], ['My Orders', '/account']]],
-  ['Our Services', [['Wholesale', '/?quote=wholesale#contact'], ['Global Trade', '/#buyers'], ['Shipping & Logistics', '/#faq'], ['FAQs', '/#faq'], ['Contact Us', '/#contact']]],
+  ['Quick Links', [['Home', '/'], ['About Us', '/#about'], ['Our Products', '/shop'], ['Become a Distributor', '/?quote=distributor#contact'], ['My Orders', '/account']]],
+  ['Our Services', [['Request Bulk Quote', '/?quote=wholesale#contact'], ['Export Quotation', '/?quote=export#contact'], ['Shipping & Logistics', '/#faq'], ['FAQs', '/#faq'], ['Contact Us', '/#contact']]],
 ]
 
 function Newsletter() {
@@ -51,8 +51,7 @@ export default function Footer() {
       <div className="mx-auto grid max-w-7xl gap-10 px-5 py-14 sm:grid-cols-2 lg:grid-cols-3 lg:px-8 xl:grid-cols-[1.15fr_.75fr_.85fr_1.15fr_1.5fr] xl:gap-0 xl:divide-x xl:divide-white/15 [&>*]:xl:px-6 [&>*:first-child]:xl:pl-0 [&>*:last-child]:xl:pr-0">
         <div>
           <Logo light />
-          <p className="mt-4 font-script text-[15px] italic text-white/85">From Nature to the World.</p>
-          <p className="mt-3 max-w-[22em] text-[13.5px] leading-relaxed text-white/70">Pure Nigerian palm oil for homes, businesses and buyers worldwide.</p>
+          <p className="mt-4 max-w-[22em] text-[13.5px] leading-relaxed text-white/70">Wholesale palm oil supply for distributors, businesses and bulk buyers in Nigeria and worldwide.</p>
         </div>
         {COLUMNS.map(([h, links]) => (
           <div key={h}>
@@ -77,7 +76,7 @@ export default function Footer() {
       </div>
       <div className="bg-[#0f4a1c]">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-5 py-4 text-[12.5px] text-white/75 lg:px-8">
-          <span>© {new Date().getFullYear()} Farmora AgriTrade Limited. All Rights Reserved. <span className="mx-2 opacity-50">|</span><span className="font-script italic">From Nature to the World.</span></span>
+          <span>© {new Date().getFullYear()} Farmora AgriTrade Limited. All Rights Reserved.</span>
           <span className="tracking-wide">Quality • Trusted • Global</span>
         </div>
       </div>
