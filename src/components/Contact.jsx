@@ -78,16 +78,16 @@ export default function Contact() {
             one business day.
           </p>
 
-          <ul className="mt-12 grid gap-4 sm:grid-cols-2">
+          <ul className="mt-12 grid gap-4">
             {DETAILS.map((d, i) => {
               const inner = (
                 <>
                   <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/20 text-gold transition-colors group-hover:border-gold group-hover:bg-gold/10">
                     <d.Icon className="h-[18px] w-[18px]" strokeWidth={1.6} />
                   </span>
-                  <span>
+                  <span className="min-w-0">
                     <span className="block text-[10.5px] tracking-[0.2em] uppercase text-white/50">{d.label}</span>
-                    <span className="mt-1 block text-[15px]">{d.value}</span>
+                    <span className="mt-1 block break-words text-[15px] [overflow-wrap:anywhere]">{d.value}</span>
                   </span>
                 </>
               )

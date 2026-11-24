@@ -14,7 +14,7 @@ export default function Product() {
   const { products, mode, setMode } = useCart()
   const [product, setProduct] = useState(undefined)
   const [sizeId, setSizeId] = useState(null)
-  const [qty, setQtyLocal] = useState(10)
+  const [qty, setQtyLocal] = useState(5) // minimum order is 5 of any pack size
 
   useEffect(() => {
     setProduct(undefined)
@@ -73,7 +73,7 @@ export default function Product() {
             <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-grass">{product.tag}</p>
             <h1 className="mt-2 font-display text-[32px] font-extrabold leading-tight text-ink md:text-[40px]">{product.name}</h1>
             <p className="mt-4 font-display text-[22px] font-bold text-ruby">Bulk price on request</p>
-            <p className="mt-1 text-[13.5px] text-muted">We supply in bulk only. Choose a pack size and quantity, and we'll reply with prices, availability and delivery within one business day.</p>
+            <p className="mt-1 text-[13.5px] text-muted">We supply in bulk only, with a minimum order of 5 of any pack size. Choose a pack size and quantity, and we'll reply with prices, availability and delivery within one business day.</p>
 
             <div className="mt-6"><ModeToggle mode={mode} setMode={setMode} /></div>
 
@@ -92,9 +92,9 @@ export default function Product() {
 
             <div className="mt-7 flex flex-wrap items-center gap-3">
               <div className="flex items-center rounded-full border border-ink/15 bg-paper">
-                <button onClick={() => setQtyLocal(q => Math.max(1, q - 10))} className="grid h-12 w-12 place-items-center text-muted hover:text-ink" aria-label="Decrease quantity"><Minus className="h-4 w-4" /></button>
-                <input value={qty} onChange={e => setQtyLocal(Math.max(1, Math.min(100000, parseInt(e.target.value, 10) || 1)))} inputMode="numeric" aria-label="Quantity" className="w-16 bg-transparent text-center text-[16px] font-semibold text-ink outline-none" />
-                <button onClick={() => setQtyLocal(q => Math.min(100000, q + 10))} className="grid h-12 w-12 place-items-center text-muted hover:text-ink" aria-label="Increase quantity"><Plus className="h-4 w-4" /></button>
+                <button onClick={() => setQtyLocal(q => Math.max(5, q - 5))} className="grid h-12 w-12 place-items-center text-muted hover:text-ink" aria-label="Decrease quantity"><Minus className="h-4 w-4" /></button>
+                <input value={qty} onChange={e => setQtyLocal(Math.max(5, Math.min(100000, parseInt(e.target.value, 10) || 5)))} inputMode="numeric" aria-label="Quantity" className="w-16 bg-transparent text-center text-[16px] font-semibold text-ink outline-none" />
+                <button onClick={() => setQtyLocal(q => Math.min(100000, q + 5))} className="grid h-12 w-12 place-items-center text-muted hover:text-ink" aria-label="Increase quantity"><Plus className="h-4 w-4" /></button>
               </div>
               <Link to={quote} className="btn-micro flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-grass px-6 text-[15px] font-semibold text-white hover:bg-grass-deep sm:flex-none">
                 <FileText className="h-5 w-5" /> Request Bulk Quote
