@@ -26,6 +26,8 @@ export default function OrderDetail() {
   const [adminNotes, setAdminNotes] = useState('')
   const [prices, setPrices] = useState({})
   const [saved, setSaved] = useState('')
+  const [loc, setLoc] = useState('')
+  const [locNote, setLocNote] = useState('')
 
   const load = data => {
     setO(data)
@@ -43,8 +45,10 @@ export default function OrderDetail() {
       setNote('')
       setSaved(msg)
       setTimeout(() => setSaved(''), 2500)
+      return true
     } catch (e) {
       setError(e.message)
+      return false
     } finally {
       setBusy(false)
     }
@@ -123,6 +127,21 @@ export default function OrderDetail() {
             </dl>
           </Card>
 
+          {!['delivered', 'cancelled'].includes(o.status) && (
+            <Card title="Where is the order now?">
+              {o.currentLocation && <p className="mb-3 text-[14px]">Currently at <b>{o.currentLocation}</b> <span className="text-faint">· {date(o.locationUpdatedAt)}</span></p>}
+              <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+                <input className={input} list="farmora-locations" placeholder="e.g. Left warehouse, Ore, Ondo State" value={loc} onChange={e => setLoc(e.target.value)} />
+                <input className={input} placeholder="Note for the customer (optional)" value={locNote} onChange={e => setLocNote(e.target.value)} />
+                <button disabled={busy || !loc.trim()} onClick={() => update({ location: loc, note: locNote }, 'Location updated, customer notified').then(ok => { if (ok) { setLoc(''); setLocNote('') } })} className={`${btn} bg-lime text-night hover:brightness-95`}>Update location</button>
+              </div>
+              <datalist id="farmora-locations">
+                {['Farmora warehouse', 'Loaded and leaving warehouse', 'In transit', 'At Lagos port (Apapa)', 'At Tin Can port', 'Cleared customs', 'Out for delivery', o.city && `Arrived in ${o.city}`].filter(Boolean).map(v => <option key={v} value={v} />)}
+              </datalist>
+              <p className="mt-2 text-[12px] text-faint">The customer sees this on their dashboard and tracking page, and gets an email.</p>
+            </Card>
+          )}
+
           <Card title="Update status">
             {o.next.length === 0 ? (
               <p className="text-[14px] text-faint">This order is {o.status}. No further steps.</p>
@@ -153,6 +172,7 @@ export default function OrderDetail() {
                 <li key={i} className="relative">
                   <span className={`absolute -left-[25px] top-1 h-2.5 w-2.5 rounded-full ${i === 0 ? 'bg-scarlet' : 'bg-ink/30'}`} />
                   <p className="text-[13px]"><b className="capitalize">{e.status}</b> <span className="text-faint">· {date(e.at)} · {e.by}{!e.public && ' · internal'}</span></p>
+                  {e.location && <p className="text-[13px] font-medium">📍 {e.location}</p>}
                   {e.note && <p className="text-[13px] text-muted">{e.note}</p>}
                 </li>
               ))}

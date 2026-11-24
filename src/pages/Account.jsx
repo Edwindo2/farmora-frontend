@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Mail, Lock, Eye, EyeOff, User, Phone, Building2, ArrowRight, ArrowLeft, Package, LogOut, RotateCcw, Truck, MapPin,
   CheckCircle2, Loader2, LayoutDashboard, ListOrdered, History, UserCog, Clock, CircleDot, KeyRound,
-  Globe2, Store, Handshake, FileText, Heart, CreditCard, ShoppingCart, ShoppingBag, Printer, BadgeCheck, Hourglass,
+  Globe2, Store, Handshake, FileText, Heart, CreditCard, ShoppingCart, ShoppingBag, Printer, BadgeCheck, Hourglass, Megaphone, ShieldCheck,
 } from 'lucide-react'
 import Nav from '../components/Nav'
 import Footer from '../components/Footer'
@@ -11,7 +11,9 @@ import { Badge, FLOW, fmt, date } from '../admin/ui'
 import { useAuth } from '../auth'
 import { AddressCard, AddressForm, EMPTY_ADDRESS, NG_STATES } from '../components/Address'
 import { TierPrice } from '../components/Shop'
-import { CustomerOverview, SidePanel, FrameBar, useNotifications, useUnread, openNotifications } from './CustomerDashboard'
+import { CustomerOverview, useNotifications, useUnread } from './CustomerDashboard'
+import DashboardShell, { DateChip } from './DashboardShell'
+import { Avatar, KycBadge, PhotoCard, KycPanel, Messages, useNotices, CurrentLocation, EventLocation } from './CustomerExtras'
 import { useCart } from '../cart'
 import { useWishlist, WishButton } from '../wishlist'
 import { packImage } from '../components/Home'
@@ -252,11 +254,33 @@ export function SignInPage({ onDone, initial = 'login' }) {
 
 /* ---------------- dashboard ---------------- */
 
-const TABS = [
-  ['overview', 'Overview', LayoutDashboard], ['order', 'Place order', ShoppingCart], ['orders', 'My orders', ListOrdered], ['history', 'Tracking history', History],
-  ['reorder', 'Reorder', RotateCcw], ['invoices', 'Invoices', FileText], ['wishlist', 'Wishlist', Heart],
-  ['addresses', 'Addresses', MapPin], ['profile', 'Profile', UserCog],
+const GROUPS = [
+  ['Dashboards', [['overview', 'Overview', LayoutDashboard], ['order', 'Place order', ShoppingCart], ['orders', 'My orders', ListOrdered], ['history', 'Tracking history', History], ['invoices', 'Invoices', FileText], ['reorder', 'Reorder', RotateCcw]]],
+  ['Account', [['messages', 'Messages', Megaphone], ['kyc', 'Verification (KYC)', ShieldCheck], ['wishlist', 'Wishlist', Heart], ['addresses', 'Addresses', MapPin], ['profile', 'Profile', UserCog]]],
 ]
+const TABS = GROUPS.flatMap(g => g[1])
+
+// Orders, updates, messages and notifications for the dashboard frame (shared by the dashboard and order pages).
+function useDashboard(me) {
+  const [tick, setTick] = useState(0) // bump to reload
+  const [orders, setOrders] = useState(null)
+  const [events, setEvents] = useState(null)
+  useEffect(() => {
+    if (!me) return
+    accountApi('/orders').then(setOrders).catch(() => setOrders([]))
+    accountApi('/activity').then(setEvents).catch(() => setEvents([]))
+  }, [me, tick])
+  const [notices, markRead] = useNotices(me, tick)
+  const notes = useNotifications(me || {}, orders, events, notices)
+  const [unread, markSeenLocal] = useUnread(notes)
+  const unreadMessages = notices.filter(n => !n.read).length
+  const badges = {
+    orders: orders?.some(o => o.status === 'confirmed' && o.paymentStatus === 'unpaid') ? 'bg-sun' : undefined,
+    messages: unreadMessages,
+    kyc: me && ['none', 'rejected'].includes(me.kycStatus) ? 'bg-ruby' : undefined,
+  }
+  return { tick, refresh: () => setTick(t => t + 1), orders, events, notices, markRead, notes, unread, markSeen: () => { markSeenLocal(); markRead() }, badges }
+}
 
 // Opens the quote form pre-filled with an order's items, to order the same again.
 export function reorderItems(mode, items) {
@@ -290,6 +314,7 @@ function OrderRow({ o }) {
           <p className="flex items-center gap-3"><span className="font-display font-bold text-ink">{o.reference}</span><Badge light value={o.status} /></p>
           <p className="mt-1.5 text-[13px] text-muted">{o.items.map(i => `${i.qty} × ${i.name} (${i.size})`).join(', ')}</p>
           <p className="mt-1 flex items-center gap-1.5 text-[12px] text-faint"><MapPin className="h-3.5 w-3.5" />{o.destination} · {date(o.createdAt)}</p>
+          {o.currentLocation && !['delivered', 'cancelled'].includes(o.status) && <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-grass/10 px-2.5 py-1 text-[12px] font-medium text-grass"><Truck className="h-3.5 w-3.5" />Now at {o.currentLocation}</p>}
         </div>
         <div className="text-right">
           <p className="font-display text-[20px] font-bold text-ink">{totalText(o)}</p>
@@ -328,6 +353,7 @@ function HistoryList({ events, limit }) {
                       <p className="text-[14px] font-semibold capitalize text-ink">{e.status} <Link to={`/account/orders/${e.reference}`} className="ml-1 font-normal normal-case text-grass hover:underline">{e.reference}</Link></p>
                       <span className="text-[12px] text-faint">{new Date(e.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</span>
                     </div>
+                    <EventLocation location={e.location} />
                     {e.note && <p className="mt-1 text-[13.5px] text-muted">{e.note}</p>}
                     {e.status === 'shipped' && e.trackingNumber && <p className="mt-1 flex items-center gap-1.5 text-[13px] text-ink"><Truck className="h-4 w-4 text-muted" /> Tracking number: <b>{e.trackingNumber}</b></p>}
                   </div>
@@ -370,10 +396,12 @@ function WholesaleBanner({ me, go }) {
   return null
 }
 
-function Orders({ orders }) {
+function Orders({ orders, q = '', clearSearch }) {
   const [filter, setFilter] = useState('all')
   const isActive = o => !['delivered', 'cancelled'].includes(o.status)
-  const shown = orders.filter(o => filter === 'all' || (filter === 'active' ? isActive(o) : !isActive(o)))
+  const needle = q.trim().toLowerCase()
+  const matches = o => !needle || [o.reference, o.destination, o.status, ...o.items.map(i => `${i.name} ${i.size}`)].some(v => String(v || '').toLowerCase().includes(needle))
+  const shown = orders.filter(o => (filter === 'all' || (filter === 'active' ? isActive(o) : !isActive(o))) && matches(o))
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -384,6 +412,7 @@ function Orders({ orders }) {
         </div>
         <Link to="/account?tab=order" className="btn-micro rounded-full border border-ink/20 bg-paper px-5 py-2 text-[13px] font-medium text-ink hover:border-grass hover:text-grass">Place an order <span className="arr">→</span></Link>
       </div>
+      {needle && <p className="mb-3 text-[13px] text-muted">Results for "<b className="text-ink">{q}</b>" · <button onClick={clearSearch} className="text-grass hover:underline">Clear</button></p>}
       {shown.length ? <div className="space-y-3">{shown.map(o => <OrderRow key={o.reference} o={o} />)}</div>
         : <p className="rounded-2xl border border-dashed border-ink/20 bg-paper p-10 text-center text-[14px] text-muted">{orders.length ? 'No orders in this list.' : "You haven't placed an order yet."}</p>}
     </div>
@@ -611,6 +640,7 @@ function Profile({ me, reload }) {
   const Msg = ({ m }) => m && <p className={`text-[13.5px] ${m.ok ? 'text-grass' : 'text-ruby'}`} role="status">{m.text}</p>
   return (
     <div className="grid gap-6 lg:grid-cols-2">
+      <PhotoCard me={me} reload={reload} />
       <form onSubmit={save} className="space-y-3.5 rounded-2xl border border-ink/10 bg-paper p-6">
         <h2 className="font-display text-[18px] font-bold text-ink">Your details</h2>
         <Field icon={Mail} value={me.email} disabled aria-label="Email (can't be changed)" />
@@ -803,84 +833,47 @@ function PayBox({ order, onPaid }) {
 }
 
 export default function Account() {
-  const [me, setMe, reload] = useMe()
+  const [me, , reload] = useMe()
   const [params, setParams] = useSearchParams()
   const nav = useNavigate()
   const tab = TABS.some(t => t[0] === params.get('tab')) ? params.get('tab') : 'overview'
+  const q = params.get('q') || ''
   const go = t => setParams(t === 'overview' ? {} : { tab: t })
-  const [orders, setOrders] = useState(null)
-  const [events, setEvents] = useState(null)
-
-  const [tick, setTick] = useState(0) // bump to reload orders and updates
-  useEffect(() => {
-    if (!me) return
-    accountApi('/orders').then(setOrders).catch(() => setOrders([]))
-    accountApi('/activity').then(setEvents).catch(() => setEvents([]))
-  }, [me, tick])
-  const notes = useNotifications(me || {}, orders, events)
-  const [unread, markSeen] = useUnread(notes)
-
+  const d = useDashboard(me)
   const { signOut: doSignOut } = useAuth()
-  async function signOut() {
-    await doSignOut()
-    setOrders(null); setEvents(null)
-    nav('/')
-  }
+  async function signOut() { await doSignOut(); nav('/') }
 
   if (me === undefined) return <Shell><Spinner /></Shell>
   if (me === null) return <Shell><SignInPage onDone={reload} /></Shell>
 
+  const { orders, events } = d
+  const title = TABS.find(t => t[0] === tab)?.[1] || 'Overview'
   return (
-    <Shell>
-      <div className="mx-auto max-w-[1500px] px-4 py-8 md:px-6 lg:py-10">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="text-[12px] font-semibold uppercase tracking-[0.2em] text-grass">My dashboard</p>
-            <h1 className="mt-2 font-display text-[32px] font-extrabold leading-tight text-ink md:text-[40px]">Welcome, {me.name.split(' ')[0]}.</h1>
-            <p className="mt-1 text-[14px] text-muted">{me.email}{me.company ? ` · ${me.company}` : ''}</p>
-          </div>
-          <button onClick={signOut} className="flex items-center gap-2 rounded-full border border-ink/15 bg-paper px-4 py-2 text-[13.5px] text-muted hover:border-ruby hover:text-ruby"><LogOut className="h-4 w-4" /> Sign out</button>
-        </div>
-
-        <div className="mt-8 grid gap-5 lg:grid-cols-[230px_minmax(0,1fr)] xl:grid-cols-[230px_minmax(0,1fr)_300px]">
-          <nav className="flex gap-1 overflow-x-auto rounded-3xl border border-ink/10 bg-paper p-2 lg:flex-col lg:self-start lg:p-3" aria-label="Dashboard">
-            <p className="hidden px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-faint lg:block">Dashboard</p>
-            {TABS.map(([v, l, Icon]) => (
-              <button key={v} onClick={() => go(v)} aria-current={tab === v ? 'page' : undefined}
-                className={`flex shrink-0 items-center gap-3 rounded-xl px-4 py-2.5 text-left text-[14px] font-medium transition ${tab === v ? 'bg-grass text-white shadow-sm shadow-grass/30' : 'text-muted hover:bg-grass/10 hover:text-ink'}`}>
-                <Icon className="h-[18px] w-[18px]" />{l}
-                {v === 'orders' && orders?.some(o => o.status === 'confirmed' && o.paymentStatus === 'unpaid') && <span className="ml-auto h-2 w-2 rounded-full bg-sun" aria-label="Payment due" />}
-              </button>
-            ))}
-          </nav>
-          <div className="min-w-0 overflow-hidden rounded-3xl border border-ink/10 bg-paper">
-            <FrameBar title={TABS.find(t => t[0] === tab)?.[1] || 'Overview'} unread={unread} onBell={() => openNotifications(markSeen)} onRefresh={() => setTick(t => t + 1)} />
-            <div className="p-5 md:p-6">
-            {orders === null ? <Spinner /> : (
-              <>
-                {tab === 'overview' && <CustomerOverview me={me} orders={orders} go={go} banners={<>{!me.hasPassword && <SetPasswordNotice go={go} />}<WholesaleBanner me={me} go={go} /></>} />}
-                {tab === 'order' && <PlaceOrder me={me} />}
-                {tab === 'orders' && <Orders orders={orders} />}
-                {tab === 'history' && (
-                  <div>
-                    <h2 className="mb-1 font-display text-[19px] font-bold text-ink">Tracking history</h2>
-                    <p className="mb-6 text-[14px] text-muted">Every update on every order, newest first.</p>
-                    <HistoryList events={events} />
-                  </div>
-                )}
-                {tab === 'reorder' && <Reorder orders={orders} />}
-                {tab === 'invoices' && <Invoices orders={orders} />}
-                {tab === 'wishlist' && <Wishlist />}
-                {tab === 'addresses' && <Addresses me={me} />}
-                {tab === 'profile' && <Profile me={me} reload={reload} />}
-              </>
-            )}
+    <DashboardShell me={me} groups={GROUPS} tab={tab} go={go} title={title} badges={d.badges}
+      notes={d.notes} unread={d.unread} markSeen={d.markSeen} onRefresh={d.refresh} onSignOut={signOut}
+      onSearch={v => setParams(v.trim() ? { tab: 'orders', q: v.trim() } : { tab: 'orders' })}
+      actions={tab === 'overview' ? <DateChip /> : null}>
+      {orders === null ? <Spinner /> : (
+        <>
+          {tab === 'overview' && <CustomerOverview me={me} orders={orders} go={go} banners={<>{!me.hasPassword && <SetPasswordNotice go={go} />}<WholesaleBanner me={me} go={go} /></>} />}
+          {tab === 'order' && <PlaceOrder me={me} />}
+          {tab === 'orders' && <Orders orders={orders} q={q} clearSearch={() => go('orders')} />}
+          {tab === 'history' && (
+            <div>
+              <p className="mb-6 text-[14px] text-muted">Every update on every order, newest first.</p>
+              <HistoryList events={events} />
             </div>
-          </div>
-          <div className="lg:col-span-2 xl:col-span-1"><SidePanel me={me} notes={notes} /></div>
-        </div>
-      </div>
-    </Shell>
+          )}
+          {tab === 'messages' && <Messages notices={d.notices} markRead={d.markRead} />}
+          {tab === 'kyc' && <KycPanel reload={reload} />}
+          {tab === 'reorder' && <Reorder orders={orders} />}
+          {tab === 'invoices' && <Invoices orders={orders} />}
+          {tab === 'wishlist' && <Wishlist />}
+          {tab === 'addresses' && <Addresses me={me} />}
+          {tab === 'profile' && <Profile me={me} reload={reload} />}
+        </>
+      )}
+    </DashboardShell>
   )
 }
 
@@ -917,6 +910,8 @@ export function AccountOrder() {
   const [me, , reload] = useMe()
   const [order, setOrder] = useState(null)
   const [error, setError] = useState('')
+  const d = useDashboard(me)
+  const { signOut: doSignOut } = useAuth()
 
   useEffect(() => {
     if (me) accountApi(`/orders/${reference}`).then(setOrder).catch(err => setError(err.message))
@@ -929,14 +924,16 @@ export function AccountOrder() {
   const reorder = () => reorderItems(order.deliveryType, order.items)
 
   return (
-    <Shell>
-      <div className="mx-auto max-w-5xl px-5 py-10 lg:py-14">
-        <button onClick={() => nav('/account?tab=orders')} className="flex items-center gap-2 text-[13.5px] text-muted hover:text-ink"><ArrowLeft className="h-4 w-4" /> My orders</button>
+    <DashboardShell me={me} groups={GROUPS} tab="orders" go={t => nav(t === 'overview' ? '/account' : `/account?tab=${t}`)} title="My orders" crumb={reference.toUpperCase()} badges={d.badges}
+      notes={d.notes} unread={d.unread} markSeen={d.markSeen} onRefresh={() => { d.refresh(); accountApi(`/orders/${reference}`).then(setOrder).catch(() => {}) }}
+      onSignOut={async () => { await doSignOut(); nav('/') }} onSearch={v => nav(`/account?tab=orders${v.trim() ? `&q=${encodeURIComponent(v.trim())}` : ''}`)}
+      actions={<button onClick={() => nav('/account?tab=orders')} className="flex items-center gap-2 text-[13px] text-muted hover:text-ink"><ArrowLeft className="h-4 w-4" /> All orders</button>}>
+      <div>
         {error && <p className="mt-8 text-ruby">{error}</p>}
         {!order && !error && <Spinner />}
         {order && (
-          <div className="mt-6 space-y-6">
-            <div className="rounded-2xl border border-ink/10 bg-paper p-6 md:p-8">
+          <div className="space-y-5">
+            <div className="rounded-2xl border border-ink/10 bg-paper p-5 md:p-6">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="text-[12.5px] text-faint">Order {order.reference} · placed {date(order.createdAt)}</p>
@@ -951,6 +948,7 @@ export function AccountOrder() {
                 </div>
               </div>
               <div className="mt-8"><Progress status={order.status} /></div>
+              <CurrentLocation order={order} />
               {order.trackingNumber && <p className="mt-6 flex items-center gap-2 text-[14px] text-ink"><Truck className="h-4 w-4 text-muted" /> Tracking number: <b>{order.trackingNumber}</b></p>}
             </div>
 
@@ -984,6 +982,7 @@ export function AccountOrder() {
                     <li key={i} className="relative">
                       <span className={`absolute -left-[27px] top-1 h-3 w-3 rounded-full ring-4 ring-paper ${i === 0 ? 'bg-grass' : 'bg-ink/25'}`} />
                       <p className="text-[13.5px] font-semibold capitalize text-ink">{e.status}</p>
+                      <EventLocation location={e.location} />
                       {e.note && <p className="text-[13px] text-muted">{e.note}</p>}
                       <p className="text-[11.5px] text-faint">{new Date(e.at).toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
                     </li>
@@ -995,6 +994,6 @@ export function AccountOrder() {
           </div>
         )}
       </div>
-    </Shell>
+    </DashboardShell>
   )
 }

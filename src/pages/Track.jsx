@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { Badge, FLOW, fmt, date } from '../admin/ui'
+import { CurrentLocation, EventLocation } from './CustomerExtras'
 import { LanguagePicker } from '../translate'
 
 // Public order tracking: customers enter their order reference and email.
@@ -74,6 +75,7 @@ export default function Track() {
                   ))}
                 </ol>
               )}
+              <CurrentLocation order={order} />
               {order.trackingNumber && <p className="mt-6 text-[14px]">Tracking number: <b>{order.trackingNumber}</b></p>}
             </div>
 
@@ -101,6 +103,7 @@ export default function Track() {
                     <li key={i} className="relative">
                       <span className={`absolute -left-[25px] top-1 h-2.5 w-2.5 rounded-full ${i === 0 ? 'bg-scarlet' : 'bg-ink/30'}`} />
                       <p className="text-[13px] font-medium capitalize">{e.status}</p>
+                      <EventLocation location={e.location} />
                       {e.note && <p className="text-[13px] text-muted">{e.note}</p>}
                       <p className="text-[11px] text-faint">{date(e.at)}</p>
                     </li>

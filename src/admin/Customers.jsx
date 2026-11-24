@@ -61,16 +61,21 @@ export default function Customers() {
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-ink/10 bg-paper">
-        <table className="w-full min-w-[820px] text-left text-[14px]">
+        <table className="w-full min-w-[920px] text-left text-[14px]">
           <thead className="border-b border-ink/10 text-[11px] uppercase tracking-[0.1em] text-faint">
-            <tr><th className="px-5 py-3 font-medium">Name</th><th className="px-5 py-3 font-medium">Contact</th><th className="px-5 py-3 font-medium">Account</th><th className="px-5 py-3 font-medium">Country</th><th className="px-5 py-3 font-medium">Orders</th><th className="px-5 py-3 font-medium">Since</th><th /></tr>
+            <tr><th className="px-5 py-3 font-medium">Name</th><th className="px-5 py-3 font-medium">Contact</th><th className="px-5 py-3 font-medium">Account</th><th className="px-5 py-3 font-medium">KYC</th><th className="px-5 py-3 font-medium">Country</th><th className="px-5 py-3 font-medium">Orders</th><th className="px-5 py-3 font-medium">Since</th><th /></tr>
           </thead>
           <tbody className="divide-y divide-ink/10">
-            {list === null && <tr><td colSpan="7" className="px-5 py-8 text-center text-faint">Loading…</td></tr>}
-            {list && shown.length === 0 && <tr><td colSpan="7" className="px-5 py-8 text-center text-faint">No customers here.</td></tr>}
+            {list === null && <tr><td colSpan="8" className="px-5 py-8 text-center text-faint">Loading…</td></tr>}
+            {list && shown.length === 0 && <tr><td colSpan="8" className="px-5 py-8 text-center text-faint">No customers here.</td></tr>}
             {shown.map(c => (
               <tr key={c.id} className="hover:bg-ink/[0.04]">
-                <td className="px-5 py-3.5 font-medium">{c.name}{c.company && <p className="text-[12px] font-normal text-faint">{c.company}</p>}</td>
+                <td className="px-5 py-3.5 font-medium">
+                  <div className="flex items-center gap-3">
+                    {c.avatarUrl ? <img src={c.avatarUrl} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" /> : <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-lime/15 text-[11px] font-semibold text-lime">{c.name.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()}</span>}
+                    <div>{c.name}{c.company && <p className="text-[12px] font-normal text-faint">{c.company}</p>}</div>
+                  </div>
+                </td>
                 <td className="px-5 py-3.5">{c.email}<p className="text-[12px] text-faint">{c.phone}</p></td>
                 <td className="px-5 py-3.5">
                   <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-medium capitalize ring-1 ring-inset ${TYPE[c.accountType] || TYPE.individual}`}>{c.accountType}</span>
@@ -78,10 +83,12 @@ export default function Customers() {
                   {c.accountType === 'distributor' && c.area && <p className="mt-1 text-[11.5px] text-faint">Covers: {c.area}</p>}
                   {!c.registered && <p className="mt-1 text-[11.5px] text-faint">Guest (no account)</p>}
                 </td>
+                <td className="px-5 py-3.5 text-[12.5px]">{c.kycStatus === 'none' ? <span className="text-faint">Not sent</span> : <Link to={`${ADMIN}/kyc`} className={`capitalize hover:underline ${c.kycStatus === 'approved' ? 'text-lime' : c.kycStatus === 'rejected' ? 'text-red-500' : 'text-amber-600 dark:text-amber-300'}`}>{c.kycStatus === 'approved' ? 'Verified' : c.kycStatus === 'pending' ? 'In review' : 'Rejected'}</Link>}</td>
                 <td className="px-5 py-3.5">{c.country}</td>
                 <td className="px-5 py-3.5"><Link className="link-u" to={`${ADMIN}/orders?q=${encodeURIComponent(c.email)}`}>{c.orders}</Link></td>
                 <td className="px-5 py-3.5 text-faint">{date(c.createdAt)}</td>
-                <td className="px-5 py-3.5 text-right">
+                <td className="space-x-3 whitespace-nowrap px-5 py-3.5 text-right">
+                  {c.registered && <Link to={`${ADMIN}/notify?to=${c.id}`} className="text-[12.5px] text-muted hover:text-ink">Message</Link>}
                   {c.wholesaleStatus === 'approved'
                     ? <button disabled={busy === c.id} onClick={() => decide(c, 'none')} className="text-[12.5px] text-muted hover:text-red-500">{c.accountType === 'distributor' ? 'Remove approval' : 'Remove wholesale'}</button>
                     : c.wholesaleStatus !== 'pending' && c.registered && <button disabled={busy === c.id} onClick={() => decide(c, 'approved')} className="text-[12.5px] text-lime hover:underline">{c.accountType === 'distributor' ? 'Approve distributor' : 'Make wholesale'}</button>}

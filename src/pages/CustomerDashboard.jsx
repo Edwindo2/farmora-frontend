@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Bell, CheckCircle2, CreditCard, Package, Truck, ShoppingCart, ShoppingBag, Wallet, BadgeCheck, Hourglass,
-  TrendingUp, Mail, MessageCircle, MoreVertical, Sun, Moon, RefreshCw,
+  TrendingUp, Mail, MessageCircle, MoreVertical, Sun, Moon, RefreshCw, Megaphone, ShieldAlert, ShieldCheck, MapPin,
 } from 'lucide-react'
 import { Badge, fmt } from '../admin/ui'
 import { useSite, waHref } from '../site'
@@ -28,29 +28,33 @@ const sumBy = (orders, cur) => orders.filter(o => o.currency === cur && o.paymen
 /* ---------- notifications ---------- */
 
 // Notifications for the signed-in customer: account approval, orders ready to pay, and order updates.
-export function useNotifications(me, orders, events) {
+export function useNotifications(me, orders, events, notices = []) {
   return useMemo(() => {
     const list = []
     if (['wholesale', 'distributor'].includes(me.accountType)) {
       if (me.wholesaleStatus === 'approved') list.push({ key: 'acct', icon: BadgeCheck, text: `Your ${me.accountType} account is approved.`, sub: 'Your prices now show on every product.', link: '/account?tab=order', at: me.since })
       if (me.wholesaleStatus === 'pending') list.push({ key: 'acct', icon: Hourglass, text: `Your ${me.accountType} application is under review.`, sub: "We'll email you once it's approved.", link: '/account?tab=profile', at: me.since })
     }
+    if (me.kycStatus === 'none') list.push({ key: 'kyc', icon: ShieldAlert, text: 'Verify your identity (KYC).', sub: 'Upload an ID to verify your trade account.', link: '/account?tab=kyc', at: me.since, action: true })
+    if (me.kycStatus === 'rejected') list.push({ key: 'kyc', icon: ShieldAlert, text: 'Please re-upload your KYC documents.', sub: me.kycNote, link: '/account?tab=kyc', at: me.since, action: true })
+    if (me.kycStatus === 'pending') list.push({ key: 'kyc', icon: Hourglass, text: 'Your KYC documents are being reviewed.', link: '/account?tab=kyc', at: me.since })
+    notices.forEach(n => list.push({ key: `n-${n.id}`, icon: n.title.toLowerCase().includes('verified') ? ShieldCheck : Megaphone, text: n.title, sub: n.body, link: n.link || '/account?tab=messages', at: n.at, unread: !n.read }))
     ;(orders || []).filter(o => o.status === 'confirmed' && o.paymentStatus === 'unpaid' && o.total != null).forEach(o => list.push({
       key: `pay-${o.reference}`, icon: CreditCard, text: `Order ${o.reference} is ready for payment.`, sub: fmt(o.total, o.currency), link: `/account/orders/${o.reference}`, at: o.createdAt, action: true,
     }))
     ;(events || []).slice(0, 12).forEach(e => list.push({
-      key: e.id, icon: e.status === 'delivered' ? Package : e.status === 'shipped' ? Truck : e.status === 'paid' ? Wallet : CheckCircle2,
-      text: `Order ${e.reference}: ${e.status}`, sub: e.note, link: `/account/orders/${e.reference}`, at: e.at,
+      key: e.id, icon: e.location ? MapPin : e.status === 'delivered' ? Package : e.status === 'shipped' ? Truck : e.status === 'paid' ? Wallet : CheckCircle2,
+      text: e.location ? `Order ${e.reference} is now at ${e.location}` : `Order ${e.reference}: ${e.status}`, sub: e.note, link: `/account/orders/${e.reference}`, at: e.at,
     }))
     return list.sort((a, b) => (b.action ? 1 : 0) - (a.action ? 1 : 0) || new Date(b.at) - new Date(a.at))
-  }, [me, orders, events])
+  }, [me, orders, events, notices])
 }
 
 function readSeen() { try { return Number(localStorage.getItem(SEEN_KEY)) || 0 } catch { return 0 } }
 
 export function useUnread(notes) {
   const [seen, setSeen] = useState(readSeen)
-  const unread = notes.filter(n => n.action || new Date(n.at).getTime() > seen).length
+  const unread = notes.filter(n => n.action || n.unread || new Date(n.at).getTime() > seen).length
   const markSeen = () => { const t = Date.now(); setSeen(t); try { localStorage.setItem(SEEN_KEY, String(t)) } catch { /* private mode */ } }
   return [unread, markSeen]
 }
@@ -92,6 +96,7 @@ export function SidePanel({ me, notes }) {
         <dl className="mt-3 space-y-2 text-[13px]">
           <div className="flex justify-between gap-3"><dt className="text-muted">Account type</dt><dd className="font-medium text-ink">{type}</dd></div>
           <div className="flex justify-between gap-3"><dt className="text-muted">Status</dt><dd className={`font-medium ${status === 'Approved' || status === 'Active' ? 'text-grass' : 'text-ink'}`}>{status}</dd></div>
+          <div className="flex justify-between gap-3"><dt className="text-muted">Verification</dt><dd><Link to="/account?tab=kyc" className={`font-medium hover:underline ${me.kycStatus === 'approved' ? 'text-grass' : me.kycStatus === 'rejected' ? 'text-ruby' : 'text-ink'}`}>{{ approved: 'Verified', pending: 'In review', rejected: 'Re-upload needed', none: 'Not verified' }[me.kycStatus || 'none']}</Link></dd></div>
           {me.area && <div className="flex justify-between gap-3"><dt className="text-muted">Areas covered</dt><dd className="text-right text-ink">{me.area}</dd></div>}
           {me.company && <div className="flex justify-between gap-3"><dt className="text-muted">Business</dt><dd className="text-right text-ink">{me.company}</dd></div>}
         </dl>
@@ -194,9 +199,9 @@ function Gauge({ value }) {
 
 function Stat({ title, value, sub, children }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-ink/10 bg-mist p-5">
-      <p className="text-[13.5px] text-muted">{title}</p>
-      <p className="mt-2.5 font-display text-[26px] font-bold leading-tight tracking-tight text-ink">{value}</p>
+    <div className="relative overflow-hidden rounded-2xl border border-ink/10 bg-paper p-4 @md:p-5">
+      <p className="text-[13px] text-muted">{title}</p>
+      <p className="mt-2 break-words text-[19px] font-semibold @md:text-[22px] @5xl:text-[24px] leading-tight tracking-tight text-ink">{value}</p>
       {sub && <p className="mt-1.5 flex items-center gap-1.5 text-[12px] text-muted">{sub}</p>}
       {children}
     </div>
@@ -232,25 +237,25 @@ export function CustomerOverview({ me, orders, go, banners }) {
   const spent = [ngn ? money(ngn, 'NGN') : null, usd ? money(usd, 'USD') : null].filter(Boolean).join(' · ') || money(0, me.accountType === 'international' ? 'USD' : 'NGN')
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {banners}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 @md:gap-4 @3xl:grid-cols-4">
         <Stat title="Total paid" value={spent} sub={<><TrendingUp className="h-4 w-4 text-grass" />{live.filter(o => o.paymentStatus === 'paid').length} paid orders</>} />
         <Stat title="Orders" value={orders.length} sub={<>{active.length} in progress</>} />
         <Stat title="Delivered" value={`${rate}%`} sub={<>{delivered} of {live.length} orders</>}><Gauge value={rate} /></Stat>
         <Stat title="Awaiting payment" value={toPay.length} sub={toPay.length ? <button onClick={() => go('orders')} className="font-semibold text-grass hover:underline">Pay now →</button> : 'Nothing due'} />
       </div>
 
-      <div className="grid gap-4 2xl:grid-cols-[1.4fr_1fr]">
-        <section className="rounded-2xl border border-ink/10 bg-mist p-6">
-          <div className="flex items-center justify-between"><h2 className="text-[18px] font-semibold text-ink">Purchase overview</h2><button onClick={() => go('orders')} className="text-faint hover:text-ink" aria-label="All orders"><MoreVertical className="h-4 w-4" /></button></div>
+      <div className="grid gap-4 @3xl:grid-cols-[1.45fr_1fr]">
+        <section className="rounded-2xl border border-ink/10 bg-paper p-5">
+          <div className="flex items-center justify-between"><h2 className="text-[17px] font-medium text-ink">Purchase overview</h2><button onClick={() => go('orders')} className="text-faint hover:text-ink" aria-label="All orders"><MoreVertical className="h-4 w-4" /></button></div>
           <div className="mt-5 flex flex-col items-center gap-7 sm:flex-row">
             <Donut data={byProduct} total={units} />
             <div className="w-full flex-1">
               <div className="flex items-center gap-3 border-b border-ink/10 pb-4">
                 <span className="grid h-10 w-10 place-items-center rounded-lg bg-grass/15 text-grass"><ShoppingBag className="h-5 w-5" /></span>
-                <div><p className="text-[13px] text-muted">Orders all time</p><p className="font-display text-[22px] font-bold text-ink">{orders.length}</p></div>
+                <div><p className="text-[13px] text-muted">Orders all time</p><p className="text-[22px] font-semibold text-ink">{orders.length}</p></div>
               </div>
               <ul className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4">
                 {byProduct.length === 0 && <li className="col-span-2 text-[13px] text-faint">Your products will show here after your first order.</li>}
@@ -266,19 +271,19 @@ export function CustomerOverview({ me, orders, go, banners }) {
         </section>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <button onClick={() => go('orders')} className="lift rounded-2xl border border-ink/10 bg-mist p-5 text-left">
+          <button onClick={() => go('orders')} className="lift rounded-2xl border border-ink/10 bg-paper p-5 text-left">
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-grass text-white"><Truck className="h-4 w-4" /></span>
             <p className="mt-4 text-[12px] text-muted">In progress</p>
-            <p className="font-display text-[20px] font-bold text-ink">{active.length}</p>
+            <p className="text-[20px] font-semibold text-ink">{active.length}</p>
             <p className="text-[11px] text-faint">Being prepared or on the way</p>
           </button>
-          <button onClick={() => go('order')} className="lift rounded-2xl border border-ink/10 bg-mist p-5 text-left">
+          <button onClick={() => go('order')} className="lift rounded-2xl border border-ink/10 bg-paper p-5 text-left">
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-grass text-white"><ShoppingCart className="h-4 w-4" /></span>
             <p className="mt-4 text-[12px] text-muted">Units ordered</p>
-            <p className="font-display text-[20px] font-bold text-ink">{units.toLocaleString()}</p>
+            <p className="text-[20px] font-semibold text-ink">{units.toLocaleString()}</p>
             <p className="text-[11px] text-faint">Place a new order →</p>
           </button>
-          <div className="relative h-[190px] overflow-hidden rounded-2xl border border-ink/10 bg-mist p-5 sm:col-span-2">
+          <div className="relative h-[190px] overflow-hidden rounded-2xl border border-ink/10 bg-paper p-5 sm:col-span-2">
             <p className="relative z-10 text-[15px] font-semibold text-ink">Orders per month</p>
             <p className="relative z-10 mt-1 inline-flex items-center gap-2 border-l-2 border-sun pl-2 text-[11px] text-faint">Busiest: {busiest.label} <span className="text-[15px] font-semibold text-ink">{busiest.v}</span></p>
             <div className="absolute inset-x-0 bottom-5 h-[110px]"><AreaChart points={months} /></div>
@@ -287,22 +292,22 @@ export function CustomerOverview({ me, orders, go, banners }) {
         </div>
       </div>
 
-      <div className="grid gap-4 2xl:grid-cols-[1.4fr_1fr]">
-        <section className="overflow-hidden rounded-2xl border border-ink/10 bg-mist">
-          <div className="flex items-center justify-between p-6 pb-4"><h2 className="text-[18px] font-semibold text-ink">Recent orders</h2><button onClick={() => go('orders')} className="text-[13px] font-medium text-grass hover:underline">All orders</button></div>
+      <div className="grid gap-4 @3xl:grid-cols-[1.45fr_1fr]">
+        <section className="overflow-hidden rounded-2xl border border-ink/10 bg-paper">
+          <div className="flex items-center justify-between p-5 pb-4"><h2 className="text-[17px] font-medium text-ink">Recent orders</h2><button onClick={() => go('orders')} className="text-[13px] font-medium text-grass hover:underline">All orders</button></div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[520px] text-left text-[14px]">
               <thead className="border-y border-ink/10 text-[12px] text-muted">
-                <tr><th className="px-6 py-3 font-medium">Order</th><th className="px-6 py-3 font-medium">Items</th><th className="px-6 py-3 text-right font-medium">Total</th><th className="px-6 py-3 text-right font-medium">Status</th></tr>
+                <tr><th className="px-5 py-3 font-medium">Order</th><th className="px-5 py-3 font-medium">Items</th><th className="px-5 py-3 text-right font-medium">Total</th><th className="px-5 py-3 text-right font-medium">Status</th></tr>
               </thead>
               <tbody className="text-ink">
                 {orders.length === 0 && <tr><td colSpan="4" className="px-6 py-8 text-center text-faint">No orders yet. <button onClick={() => go('order')} className="font-semibold text-grass hover:underline">Place your first order</button></td></tr>}
                 {orders.slice(0, 6).map(o => (
                   <tr key={o.reference} className="transition-colors hover:bg-ink/[0.03]">
-                    <td className="px-6 py-3"><Link to={`/account/orders/${o.reference}`} className="font-semibold hover:text-grass">{o.reference}</Link><p className="text-[12px] text-faint">{new Date(o.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</p></td>
-                    <td className="px-6 py-3 text-muted">{o.itemCount.toLocaleString()} units</td>
-                    <td className="px-6 py-3 text-right">{o.total == null ? 'To be confirmed' : money(o.total, o.currency)}</td>
-                    <td className="px-6 py-3 text-right"><Badge light value={o.status} /></td>
+                    <td className="px-5 py-3"><Link to={`/account/orders/${o.reference}`} className="font-semibold hover:text-grass">{o.reference}</Link><p className="text-[12px] text-faint">{new Date(o.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</p></td>
+                    <td className="px-5 py-3 text-muted">{o.itemCount.toLocaleString()} units</td>
+                    <td className="px-5 py-3 text-right">{o.total == null ? 'To be confirmed' : money(o.total, o.currency)}</td>
+                    <td className="px-5 py-3 text-right"><Badge light value={o.status} /></td>
                   </tr>
                 ))}
               </tbody>

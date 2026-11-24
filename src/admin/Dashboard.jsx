@@ -181,6 +181,7 @@ export default function Dashboard() {
             </div>
             <p className="mt-5 max-w-[22em] text-[14px] text-white/80">Confirm stock and set delivery fees so customers can pay online.</p>
             {s.pendingApplications > 0 && <Link to={`${ADMIN}/customers`} className="mt-3 inline-flex w-fit items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-[12.5px] text-white hover:bg-white/20"><Icon name="customers" className="h-4 w-4" />{s.pendingApplications} distributor / wholesale application{s.pendingApplications > 1 ? 's' : ''} waiting</Link>}
+            {s.pendingKyc > 0 && <Link to={`${ADMIN}/kyc`} className="mt-3 inline-flex w-fit items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-[12.5px] text-white hover:bg-white/20"><Icon name="kyc" className="h-4 w-4" />{s.pendingKyc} KYC submission{s.pendingKyc > 1 ? 's' : ''} to review</Link>}
             <div className="mt-auto flex items-center gap-3 pt-6">
               <Link to={`${ADMIN}/orders?status=received`} className="btn-micro flex-1 rounded-full bg-lime py-3 text-center text-[14px] font-medium text-night">Review orders</Link>
               <Link to={`${ADMIN}/messages`} className="grid h-11 w-11 place-items-center rounded-full bg-[#2f6d26] text-lime"><Icon name="messages" className="h-4 w-4" /></Link>
