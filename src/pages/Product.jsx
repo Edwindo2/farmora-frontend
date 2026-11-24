@@ -6,7 +6,7 @@ import { useCart } from '../cart'
 import { ModeToggle, TierPrice } from '../components/Shop'
 import { packImage } from '../components/Home'
 import { WishButton } from '../wishlist'
-import { quoteHref, orderHref } from '../lib'
+import { quoteHref, orderHref, localProduct } from '../lib'
 
 // Product page: photo, pack sizes, quantity, a bulk quote button and related products.
 export default function Product() {
@@ -18,7 +18,7 @@ export default function Product() {
 
   useEffect(() => {
     setProduct(undefined)
-    fetch(`/api/products/${encodeURIComponent(slug)}`).then(r => (r.ok ? r.json() : null)).then(p => {
+    fetch(`/api/products/${encodeURIComponent(slug)}`).then(r => (r.ok ? r.json() : null)).then(localProduct).then(p => {
       setProduct(p)
       if (p) {
         setSizeId(p.sizes[0]?.id || null)

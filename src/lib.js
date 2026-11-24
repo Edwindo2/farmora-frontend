@@ -78,3 +78,11 @@ export function quoteHref({ type = 'wholesale', product, size, qty } = {}) {
   if (qty) p.set('qty', String(qty))
   return `/?${p}#contact`
 }
+
+// Images are served by this website. If the server hands back a full URL on another domain (e.g. a wrong
+// PUBLIC_URL setting on Render), use just the path so the picture still loads.
+export function localImage(u) {
+  if (!u) return u
+  try { const x = new URL(u, window.location.origin); return /^\/(products|home|uploads|bg|journey)\//.test(x.pathname) ? x.pathname : u } catch { return u }
+}
+export const localProduct = p => p && ({ ...p, image: localImage(p.image), sizes: (p.sizes || []).map(z => ({ ...z, image: localImage(z.image) })) })

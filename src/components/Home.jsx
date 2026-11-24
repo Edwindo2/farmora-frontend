@@ -4,7 +4,7 @@ import { FileText, ArrowRight, Leaf, ShieldCheck, Globe2, Handshake, Headset, Ch
 import { useCart } from '../cart'
 import { WishButton } from '../wishlist'
 import { useSite } from '../site'
-import { quoteHref, orderHref } from '../lib'
+import { quoteHref, orderHref, localImage } from '../lib'
 import { TierPrice } from './Shop'
 
 // Home page sections, laid out like the Farmora guide design.
@@ -274,7 +274,7 @@ function Updates({ news }) {
   return (
     <Card title="Latest Updates">
       <Wrap {...wrapProps} className="group flex gap-4">
-        {n.image && <img src={n.image} alt="" loading="lazy" className="h-28 w-28 shrink-0 rounded-xl object-cover" />}
+        {n.image && <img src={localImage(n.image)} alt="" loading="lazy" className="h-28 w-28 shrink-0 rounded-xl object-cover" />}
         <div>
           <h3 className="font-display text-[15px] font-bold leading-snug text-ink group-hover:text-grass">{n.title}</h3>
           <p className="mt-1.5 line-clamp-3 text-[13.5px] leading-relaxed text-muted">{n.summary}</p>

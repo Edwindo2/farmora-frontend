@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from './auth'
 import { useSite } from './site'
-import { money, currencyOf } from './lib'
+import { money, currencyOf, localProduct } from './lib'
 
 // Products, buying mode, display currency and the cart, shared by every page.
 // The cart, mode and currency are saved in the browser so they survive moving between pages or a refresh.
@@ -41,7 +41,8 @@ export function CartProvider({ children }) {
     if (!priceKey) return // wait until we know who is signed in
     fetch('/api/products', { credentials: 'include' })
       .then(r => (r.ok ? r.json() : Promise.reject()))
-      .then(list => {
+      .then(raw => {
+        const list = raw.map(localProduct)
         setProducts(list)
         const build = items => (items || []).flatMap(i => {
           const product = list.find(p => p.id === i.productId)
