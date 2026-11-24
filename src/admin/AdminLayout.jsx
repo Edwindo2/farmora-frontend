@@ -1,15 +1,15 @@
 import { ADMIN } from './path'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useNavigate, Link, useLocation } from 'react-router-dom'
 import { api } from './api'
 import { useTheme } from '../lib'
 import { LanguagePicker } from '../translate'
-import { LayoutGrid, ShoppingBag, Droplet, Users, MessageSquare, Store, CircleHelp, Search, RefreshCw, Bell, Globe, Mail, Phone, LogOut, Menu, Sun, Moon, MapPin, MessageSquareQuote } from 'lucide-react'
+import { LayoutGrid, ShoppingBag, Droplet, Users, MessageSquare, Store, CircleHelp, Search, RefreshCw, Bell, Globe, Mail, Phone, LogOut, Menu, Sun, Moon, MapPin, MessageSquareQuote, Wallet } from 'lucide-react'
 
 const ICONS = {
   overview: LayoutGrid, orders: ShoppingBag, products: Droplet, customers: Users, messages: MessageSquare,
   store: Store, help: CircleHelp, search: Search, refresh: RefreshCw, bell: Bell, globe: Globe,
-  order: ShoppingBag, message: MessageSquare, mail: Mail, phone: Phone, logout: LogOut, menu: Menu, pin: MapPin, quote: MessageSquareQuote,
+  order: ShoppingBag, message: MessageSquare, mail: Mail, phone: Phone, logout: LogOut, menu: Menu, pin: MapPin, quote: MessageSquareQuote, wallet: Wallet,
 }
 export function Icon({ name, className = 'h-[18px] w-[18px]' }) {
   const C = ICONS[name]
@@ -43,25 +43,68 @@ const ago = d => {
 const initials = n => n.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()
 const HUES = ['bg-lime text-night', 'bg-amber-300 text-night', 'bg-sky-300 text-night', 'bg-rose-300 text-night', 'bg-violet-300 text-night']
 
+// Notification rows, used in the right panel and in the bell dropdown.
+function NotificationItems({ items, onPick, limit = 6 }) {
+  return (
+    <ul className="space-y-4">
+      {items.length === 0 && <li className="text-[13px] text-faint">Nothing new.</li>}
+      {items.slice(0, limit).map((n, i) => (
+        <li key={i}>
+          <Link to={ADMIN + n.link} onClick={onPick} className="group flex gap-3">
+            <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${n.action ? 'bg-lime text-night' : 'bg-lime/15 text-lime'}`}><Icon name={n.type} className="h-4 w-4" /></span>
+            <span className="min-w-0">
+              <span className="block text-[13px] leading-snug group-hover:text-lime">{n.text}</span>
+              <span className="text-[11px] text-faint">{ago(n.at)}</span>
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+const SEEN_KEY = 'farmora-admin-notes-seen'
+const readSeen = () => { try { return Number(localStorage.getItem(SEEN_KEY)) || 0 } catch { return 0 } }
+
+// Bell with an unread count; opens the notifications as a dropdown (on every screen size).
+function NotificationBell({ feed }) {
+  const [open, setOpen] = useState(false)
+  const [seen, setSeen] = useState(readSeen)
+  const ref = useRef(null)
+  const items = feed?.notifications || []
+  const unread = items.filter(n => n.action || new Date(n.at).getTime() > seen).length
+  useEffect(() => {
+    if (!open) return
+    const t = Date.now()
+    setSeen(t)
+    try { localStorage.setItem(SEEN_KEY, String(t)) } catch { /* private mode */ }
+    const onDown = e => { if (!ref.current?.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [open])
+  return (
+    <div ref={ref} className="relative">
+      <button onClick={() => setOpen(o => !o)} className="relative grid h-9 w-9 place-items-center rounded-full hover:bg-ink/[0.06] hover:text-ink" aria-label={`Notifications${unread ? `, ${unread} new` : ''}`} aria-expanded={open}>
+        <Icon name="bell" />
+        {unread > 0 && <span className="absolute right-0.5 top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-lime px-1 text-[10px] font-semibold text-night">{unread}</span>}
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-50 mt-2 w-[min(340px,calc(100vw-2rem))] rounded-2xl border border-ink/10 bg-shell p-5 text-ink shadow-2xl">
+          <p className="mb-4 text-[15px] font-medium">Notifications</p>
+          <NotificationItems items={items} onPick={() => setOpen(false)} limit={8} />
+          <Link to={`${ADMIN}/messages`} onClick={() => setOpen(false)} className="mt-4 block border-t border-ink/10 pt-3 text-center text-[12.5px] text-muted hover:text-lime">Open messages</Link>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function RightPanel({ feed }) {
   if (!feed) return null
   return (
     <aside className="hidden w-[290px] shrink-0 border-l border-ink/10 p-6 xl:block">
       <h3 className="text-[17px] font-medium">Notifications</h3>
-      <ul className="mt-4 space-y-4">
-        {feed.notifications.length === 0 && <li className="text-[13px] text-faint">Nothing new.</li>}
-        {feed.notifications.map((n, i) => (
-          <li key={i}>
-            <Link to={ADMIN + n.link} className="group flex gap-3">
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-lime/15 text-lime"><Icon name={n.type} className="h-4 w-4" /></span>
-              <span className="min-w-0">
-                <span className="block text-[13px] leading-snug group-hover:text-lime">{n.text}</span>
-                <span className="text-[11px] text-faint">{ago(n.at)}</span>
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+      <div className="mt-4"><NotificationItems items={feed.notifications} /></div>
 
       <div className="my-6 h-px bg-ink/10" />
       <h3 className="text-[17px] font-medium">Activities</h3>
@@ -178,10 +221,7 @@ export default function AdminLayout() {
             </nav>
             <div className="ml-auto flex items-center gap-1 text-muted">
               <button onClick={() => setTick(t => t + 1)} className="grid h-9 w-9 place-items-center rounded-full hover:bg-ink/[0.06] hover:text-ink" aria-label="Refresh"><Icon name="refresh" /></button>
-              <Link to={`${ADMIN}/messages`} className="relative grid h-9 w-9 place-items-center rounded-full hover:bg-ink/[0.06] hover:text-ink" aria-label="Messages">
-                <Icon name="bell" />
-                {feed?.notifications.some(n => n.type === 'message' && n.text.startsWith('New')) && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-lime" />}
-              </Link>
+              <NotificationBell feed={feed} />
               <a href="/shop" className="grid h-9 w-9 place-items-center rounded-full hover:bg-ink/[0.06] hover:text-ink" aria-label="View store"><Icon name="globe" /></a>
               <LanguagePicker variant="pill" className="ml-1 hidden sm:block" />
               <ThemeButton />

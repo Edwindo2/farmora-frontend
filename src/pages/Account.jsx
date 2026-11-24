@@ -3,17 +3,19 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Mail, Lock, Eye, EyeOff, User, Phone, Building2, ArrowRight, ArrowLeft, Package, LogOut, RotateCcw, Truck, MapPin,
   CheckCircle2, Loader2, LayoutDashboard, ListOrdered, History, UserCog, Clock, CircleDot, KeyRound,
-  Globe2, Store, Handshake, FileText, Heart, ShoppingBag, Printer, BadgeCheck, Hourglass,
+  Globe2, Store, Handshake, FileText, Heart, CreditCard, ShoppingCart, ShoppingBag, Printer, BadgeCheck, Hourglass,
 } from 'lucide-react'
 import Nav from '../components/Nav'
 import Footer from '../components/Footer'
 import { Badge, FLOW, fmt, date } from '../admin/ui'
 import { useAuth } from '../auth'
-import { AddressCard, AddressForm, EMPTY_ADDRESS } from '../components/Address'
+import { AddressCard, AddressForm, EMPTY_ADDRESS, NG_STATES } from '../components/Address'
+import { TierPrice } from '../components/Shop'
+import { CustomerOverview, SidePanel, FrameBar, useNotifications, useUnread, openNotifications } from './CustomerDashboard'
 import { useCart } from '../cart'
 import { useWishlist, WishButton } from '../wishlist'
 import { packImage } from '../components/Home'
-import { quoteHref } from '../lib'
+import { quoteHref, priceOf, currencyOf } from '../lib'
 
 // Customer accounts: register / sign in, then a dashboard with orders, live tracking and tracking history.
 
@@ -183,7 +185,7 @@ export function AuthForms({ onDone: done, initial = 'login', compact = false }) 
             {f.accountType === 'distributor' && <p className="rounded-lg bg-grass/10 px-3 py-2 text-[12.5px] text-ink"><b>Become a Farmora distributor.</b> We supply you at special distributor prices and you resell to retailers and customers in your area. Our team reviews every application; once approved, your distributor prices appear when you sign in.</p>}
             {f.accountType === 'international' && <p className="rounded-lg bg-sun/15 px-3 py-2 text-[12.5px] text-ink">For bulk buyers outside Nigeria. Request export quotations with shipping to your port.</p>}
             <Field icon={User} placeholder="Your full name" value={f.name} onChange={set('name')} autoComplete="name" required />
-            <Field icon={Building2} placeholder={f.accountType === 'international' ? 'Company name (optional)' : 'Business / company name'} value={f.company} onChange={set('company')} autoComplete="organization" required={f.accountType !== 'international'} />
+            <Field icon={Building2} placeholder="Business / company name (optional)" value={f.company} onChange={set('company')} autoComplete="organization" />
             {f.accountType === 'distributor' && <>
               <Field icon={MapPin} placeholder="States / areas you will cover" value={f.area} onChange={set('area')} required />
               <Field icon={Package} placeholder="Expected monthly volume, e.g. 50 jerrycans (optional)" value={f.monthlyVolume} onChange={set('monthlyVolume')} />
@@ -251,7 +253,7 @@ export function SignInPage({ onDone, initial = 'login' }) {
 /* ---------------- dashboard ---------------- */
 
 const TABS = [
-  ['overview', 'Overview', LayoutDashboard], ['orders', 'My orders', ListOrdered], ['history', 'Tracking history', History],
+  ['overview', 'Overview', LayoutDashboard], ['order', 'Place order', ShoppingCart], ['orders', 'My orders', ListOrdered], ['history', 'Tracking history', History],
   ['reorder', 'Reorder', RotateCcw], ['invoices', 'Invoices', FileText], ['wishlist', 'Wishlist', Heart],
   ['addresses', 'Addresses', MapPin], ['profile', 'Profile', UserCog],
 ]
@@ -349,15 +351,6 @@ function SetPasswordNotice({ go }) {
   )
 }
 
-const TILES = [
-  ['orders', 'My Orders', 'Track current and previous purchases.', ShoppingBag],
-  ['reorder', 'Reorder', 'Request the same products again.', RotateCcw],
-  ['addresses', 'My Addresses', 'Save delivery destinations.', MapPin],
-  ['invoices', 'My Invoices', 'Access receipts and invoices.', FileText],
-  ['wishlist', 'My Wishlist', 'Save favourite products.', Heart],
-  ['profile', 'My Profile', 'Manage personal information.', UserCog],
-]
-
 function WholesaleBanner({ me, go }) {
   if (me.accountType === 'distributor' && me.wholesaleStatus === 'approved') return (
     <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-grass/30 bg-grass/10 p-4 text-[14px] text-ink"><BadgeCheck className="h-5 w-5 text-grass" /><span className="flex-1"><b>Approved distributor.</b> Your distributor prices show on every product.</span><Link to="/shop" className="font-semibold text-grass hover:underline">See my prices →</Link></div>
@@ -377,54 +370,6 @@ function WholesaleBanner({ me, go }) {
   return null
 }
 
-function Overview({ me, orders, events, go }) {
-  const active = orders.filter(o => !['delivered', 'cancelled'].includes(o.status))
-  return (
-    <div className="space-y-8">
-      {!me.hasPassword && <SetPasswordNotice go={go} />}
-      <WholesaleBanner me={me} go={go} />
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-        {TILES.map(([t, l, d, Icon]) => (
-          <button key={t} onClick={() => go(t)} className="lift group rounded-2xl border border-ink/10 bg-paper p-5 text-left hover:border-grass/40">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-grass/10 text-grass transition group-hover:bg-grass group-hover:text-white"><Icon className="h-5 w-5" /></span>
-            <span className="mt-4 block font-display text-[17px] font-bold text-ink">{l}</span>
-            <span className="mt-1 block text-[13px] leading-snug text-muted">{d}</span>
-          </button>
-        ))}
-      </div>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {[['Total orders', orders.length, ListOrdered], ['In progress', active.length, Truck], ['Delivered', orders.filter(o => o.status === 'delivered').length, Package], ['Tracking updates', events?.length ?? '–', History]].map(([l, v, Icon]) => (
-          <div key={l} className="rounded-2xl border border-ink/10 bg-paper p-5">
-            <Icon className="h-5 w-5 text-grass" />
-            <p className="mt-3 font-display text-[28px] font-bold leading-none text-ink">{v}</p>
-            <p className="mt-1 text-[13px] text-muted">{l}</p>
-          </div>
-        ))}
-      </div>
-      <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-display text-[19px] font-bold text-ink">Track your active orders</h2>
-          {orders.length > 0 && <button onClick={() => go('orders')} className="text-[13px] font-medium text-grass hover:underline">All orders</button>}
-        </div>
-        {active.length ? <div className="space-y-3">{active.map(o => <OrderRow key={o.reference} o={o} />)}</div> : (
-          <div className="rounded-2xl border border-dashed border-ink/20 bg-paper p-10 text-center">
-            <Package className="mx-auto h-8 w-8 text-faint" strokeWidth={1.5} />
-            <p className="mt-3 text-[14.5px] text-muted">{orders.length ? 'No orders in progress right now.' : "You haven't placed an order yet."}</p>
-            <Link to={quoteHref()} className="btn-micro mt-5 inline-flex items-center gap-2 rounded-full bg-grass px-6 py-3 text-[14px] font-semibold text-white hover:bg-grass-deep"><FileText className="h-4 w-4" /> Request bulk quote</Link>
-          </div>
-        )}
-      </section>
-      <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-display text-[19px] font-bold text-ink">Recent tracking updates</h2>
-          {events?.length > 4 && <button onClick={() => go('history')} className="text-[13px] font-medium text-grass hover:underline">Full history</button>}
-        </div>
-        <HistoryList events={events} limit={4} />
-      </section>
-    </div>
-  )
-}
-
 function Orders({ orders }) {
   const [filter, setFilter] = useState('all')
   const isActive = o => !['delivered', 'cancelled'].includes(o.status)
@@ -437,7 +382,7 @@ function Orders({ orders }) {
             <button key={v} role="tab" aria-selected={filter === v} onClick={() => setFilter(v)} className={`rounded-full px-4 py-1.5 text-[13px] font-medium ${filter === v ? 'bg-grass text-white' : 'text-muted hover:text-ink'}`}>{l}</button>
           ))}
         </div>
-        <Link to={quoteHref()} className="btn-micro rounded-full border border-ink/20 bg-paper px-5 py-2 text-[13px] font-medium text-ink hover:border-grass hover:text-grass">Request bulk quote <span className="arr">→</span></Link>
+        <Link to="/account?tab=order" className="btn-micro rounded-full border border-ink/20 bg-paper px-5 py-2 text-[13px] font-medium text-ink hover:border-grass hover:text-grass">Place an order <span className="arr">→</span></Link>
       </div>
       {shown.length ? <div className="space-y-3">{shown.map(o => <OrderRow key={o.reference} o={o} />)}</div>
         : <p className="rounded-2xl border border-dashed border-ink/20 bg-paper p-10 text-center text-[14px] text-muted">{orders.length ? 'No orders in this list.' : "You haven't placed an order yet."}</p>}
@@ -691,6 +636,172 @@ function Profile({ me, reload }) {
   )
 }
 
+
+/* ---------------- place an order ---------------- */
+
+const MIN_QTY = 5 // minimum order: 5 packs, gallons or drums of each pack size
+const SHIP_OPTIONS = [['fob', 'Sea freight – FOB Nigerian port'], ['cif', 'Sea freight – CIF to my port'], ['air', 'Air freight'], ['advise', 'Not sure – please advise']]
+
+// Order form in the dashboard: products from the admin, quantities (minimum 5 each), delivery details.
+// We then confirm the final price and delivery cost, and the customer pays online from the order page.
+function PlaceOrder({ me }) {
+  const nav = useNavigate()
+  const { products, mode, price } = useCart()
+  const international = me.accountType === 'international'
+  const local = !international
+  const last = me.lastDelivery || {}
+  const [qty, setQty] = useState({}) // "productId:sizeId" -> number
+  const [d, setD] = useState({
+    state: last.type === 'local' ? last.state || '' : '', city: last.city || '', address: last.type === 'local' ? last.address || '' : '',
+    country: international ? last.country || me.country || '' : 'Nigeria', port: last.port || '', shipping: 'advise',
+  })
+  const [notes, setNotes] = useState('')
+  const [errors, setErrors] = useState([])
+  const [busy, setBusy] = useState(false)
+  const setF = k => e => setD({ ...d, [k]: e.target.value })
+
+  const lines = products.flatMap(p => p.sizes.filter(s => s.inStock).map(s => ({ p, s, key: `${p.id}:${s.id}`, n: Number(qty[`${p.id}:${s.id}`]) || 0 })))
+  const chosen = lines.filter(l => l.n > 0)
+  const priced = chosen.every(l => l.s.tier && priceOf(l.s, mode) != null)
+  const subtotal = priced ? chosen.reduce((t, l) => t + priceOf(l.s, mode) * l.n, 0) : null
+
+  async function submit(e) {
+    e.preventDefault()
+    const errs = []
+    if (!chosen.length) errs.push('Enter a quantity for at least one product.')
+    chosen.filter(l => l.n < MIN_QTY).forEach(l => errs.push(`Minimum order is ${MIN_QTY} for ${l.p.name}, ${l.s.label}.`))
+    if (errs.length) return setErrors(errs)
+    setBusy(true); setErrors([])
+    try {
+      const r = await accountApi('/api/orders', {
+        method: 'POST',
+        body: {
+          customer: { name: me.name, phone: me.phone, company: me.company, buyerType: me.company ? 'business' : 'individual' },
+          delivery: local ? { type: 'local', state: d.state, city: d.city, address: d.address } : { type: 'international', country: d.country, city: d.city, port: d.port, shipping: d.shipping },
+          items: chosen.map(l => ({ productId: l.p.id, sizeId: l.s.id, qty: l.n })),
+          notes,
+        },
+      })
+      nav(`/account/orders/${r.reference}`)
+    } catch (err) {
+      setErrors(err.message.split(/(?<=\.)\s+/))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (me.wholesaleStatus === 'pending') return (
+    <div className="rounded-2xl border border-sun/60 bg-sun/15 p-6 text-[14px] text-ink"><Hourglass className="mb-2 h-6 w-6" /><b>Your account is under review.</b> You can place orders once our team approves it. You'll get an email when that happens. You can still <Link to={quoteHref()} className="font-semibold text-grass hover:underline">request a bulk quote</Link>.</div>
+  )
+
+  const box = 'w-full rounded-xl border border-ink/15 bg-paper px-4 py-3 text-[14.5px] text-ink outline-none focus:border-grass'
+  return (
+    <form onSubmit={submit} className="space-y-6">
+      <div>
+        <h2 className="font-display text-[22px] font-bold text-ink">Place an order</h2>
+        <p className="mt-1 text-[14px] text-muted">Enter the quantity for each pack size you need. The minimum order is {MIN_QTY} of each pack size (packs, gallons or drums). Our team confirms the final price and delivery cost, then you can pay online from the order page.</p>
+      </div>
+
+      <section className="overflow-hidden rounded-2xl border border-ink/10 bg-paper">
+        <ul className="divide-y divide-ink/10">
+          {lines.map(({ p, s, key, n }) => (
+            <li key={key} className="flex flex-wrap items-center gap-4 p-4">
+              <img src={packImage(p, s)} alt="" className="h-14 w-14 shrink-0 rounded-xl border border-ink/10 bg-white object-contain p-1" />
+              <div className="min-w-0 flex-1">
+                <p className="font-display text-[15px] font-bold text-ink">{p.name}</p>
+                <p className="text-[13px] text-muted">{s.label}</p>
+                <TierPrice size={s} className="text-[12.5px] font-medium text-grass" />
+              </div>
+              <label className="flex items-center gap-2 text-[13px] text-muted">
+                Qty
+                <input type="number" min="0" step="1" inputMode="numeric" placeholder="0" value={qty[key] ?? ''} onChange={e => setQty({ ...qty, [key]: e.target.value.replace(/\D/g, '') })}
+                  aria-label={`Quantity of ${p.name}, ${s.label}`} className={`w-24 rounded-xl border bg-paper px-3 py-2 text-center text-[15px] font-semibold text-ink outline-none focus:border-grass ${n > 0 && n < MIN_QTY ? 'border-ruby' : 'border-ink/15'}`} />
+              </label>
+            </li>
+          ))}
+          {!lines.length && <li className="p-6 text-center text-[14px] text-muted">No products are available right now.</li>}
+        </ul>
+      </section>
+
+      <section className="space-y-3 rounded-2xl border border-ink/10 bg-paper p-5">
+        <h3 className="font-display text-[17px] font-bold text-ink">{local ? 'Delivery in Nigeria' : 'Export shipping'}</h3>
+        {local ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <select className={box} value={d.state} onChange={setF('state')} required aria-label="State">
+              <option value="">State</option>
+              {NG_STATES.map(st => <option key={st}>{st}</option>)}
+            </select>
+            <input className={box} placeholder="City / town" value={d.city} onChange={setF('city')} required />
+            <input className={`${box} sm:col-span-2`} placeholder="Delivery address (street, landmark)" value={d.address} onChange={setF('address')} required />
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <input className={box} placeholder="Country" value={d.country} onChange={setF('country')} required />
+            <input className={box} placeholder="City" value={d.city} onChange={setF('city')} required />
+            <input className={box} placeholder="Destination port or airport" value={d.port} onChange={setF('port')} required />
+            <select className={box} value={d.shipping} onChange={setF('shipping')} aria-label="Shipping method">
+              {SHIP_OPTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </div>
+        )}
+        <textarea className={`${box} min-h-20`} placeholder="Notes for our team (optional): delivery dates, packaging, etc." value={notes} onChange={e => setNotes(e.target.value)} />
+      </section>
+
+      <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-grass/30 bg-grass/5 p-5">
+        <div className="text-[14px] text-ink">
+          <p><b>{chosen.length}</b> item{chosen.length === 1 ? '' : 's'} · {chosen.reduce((t, l) => t + l.n, 0)} units</p>
+          <p className="text-muted">{subtotal != null && chosen.length ? <>Estimated subtotal: <b className="text-ink">{price(subtotal, { plain: true })}</b> ({currencyOf(mode)}). Delivery cost is confirmed by our logistics team.</> : 'Prices and delivery cost are confirmed by our team before you pay.'}</p>
+        </div>
+        <button disabled={busy} className="btn-micro flex items-center gap-2 rounded-full bg-grass px-7 py-3.5 text-[14.5px] font-semibold text-white hover:bg-grass-deep disabled:opacity-60">
+          {busy ? 'Sending…' : <>Place order <ArrowRight className="arr h-4 w-4" /></>}
+        </button>
+      </section>
+      <Errors list={errors} />
+    </form>
+  )
+}
+
+// Payment box on an order page: "Pay now" with Flutterwave once the order is confirmed with a final total.
+function PayBox({ order, onPaid }) {
+  const [params, setParams] = useSearchParams()
+  const [state, setState] = useState({ busy: false, msg: '' })
+
+  // back from Flutterwave checkout: ?payment=done&status=successful&transaction_id=…
+  useEffect(() => {
+    const id = params.get('transaction_id')
+    if (params.get('payment') !== 'done') return
+    setParams({}, { replace: true })
+    if (params.get('status') === 'cancelled' || !id) { setState({ busy: false, msg: 'Payment was cancelled. You can try again when ready.' }); return }
+    setState({ busy: true, msg: 'Confirming your payment…' })
+    accountApi(`/orders/${order.reference}/verify-payment`, { method: 'POST', body: { transactionId: id } })
+      .then(r => { setState({ busy: false, msg: r.paid ? 'Payment received. Thank you!' : r.message || 'We could not confirm the payment yet.' }); if (r.paid) onPaid() })
+      .catch(err => setState({ busy: false, msg: err.message }))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function pay() {
+    setState({ busy: true, msg: '' })
+    try { const r = await accountApi(`/orders/${order.reference}/pay`, { method: 'POST' }); window.location.href = r.link }
+    catch (err) { setState({ busy: false, msg: err.message }) }
+  }
+
+  if (order.paymentStatus === 'paid') return (
+    <div className="flex items-center gap-3 rounded-2xl border border-grass/30 bg-grass/10 p-5 text-[14px] text-ink"><BadgeCheck className="h-5 w-5 text-grass" /><span><b>Paid.</b> {order.paymentMethod ? `${order.paymentMethod}. ` : ''}Thank you, we're preparing your order.</span></div>
+  )
+  if (order.status === 'cancelled') return null
+  return (
+    <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-ink/10 bg-paper p-5">
+      <CreditCard className="h-6 w-6 text-grass" />
+      <div className="min-w-0 flex-1 text-[14px] text-ink">
+        {order.canPay
+          ? <><b>Ready for payment:</b> {fmt(order.total, order.currency)} including delivery.</>
+          : <><b>Payment:</b> once we confirm the final price and delivery cost, you can pay here online.</>}
+        {state.msg && <p className="mt-1 text-[13px] text-muted" role="status">{state.msg}</p>}
+      </div>
+      {order.canPay && <button onClick={pay} disabled={state.busy} className="btn-micro flex items-center gap-2 rounded-full bg-grass px-6 py-3 text-[14px] font-semibold text-white hover:bg-grass-deep disabled:opacity-60"><CreditCard className="h-4 w-4" /> {state.busy ? 'Please wait…' : 'Pay now'}</button>}
+    </div>
+  )
+}
+
 export default function Account() {
   const [me, setMe, reload] = useMe()
   const [params, setParams] = useSearchParams()
@@ -700,11 +811,14 @@ export default function Account() {
   const [orders, setOrders] = useState(null)
   const [events, setEvents] = useState(null)
 
+  const [tick, setTick] = useState(0) // bump to reload orders and updates
   useEffect(() => {
     if (!me) return
     accountApi('/orders').then(setOrders).catch(() => setOrders([]))
     accountApi('/activity').then(setEvents).catch(() => setEvents([]))
-  }, [me])
+  }, [me, tick])
+  const notes = useNotifications(me || {}, orders, events)
+  const [unread, markSeen] = useUnread(notes)
 
   const { signOut: doSignOut } = useAuth()
   async function signOut() {
@@ -718,7 +832,7 @@ export default function Account() {
 
   return (
     <Shell>
-      <div className="mx-auto max-w-6xl px-5 py-10 lg:py-14">
+      <div className="mx-auto max-w-[1500px] px-4 py-8 md:px-6 lg:py-10">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="text-[12px] font-semibold uppercase tracking-[0.2em] text-grass">My dashboard</p>
@@ -728,19 +842,24 @@ export default function Account() {
           <button onClick={signOut} className="flex items-center gap-2 rounded-full border border-ink/15 bg-paper px-4 py-2 text-[13.5px] text-muted hover:border-ruby hover:text-ruby"><LogOut className="h-4 w-4" /> Sign out</button>
         </div>
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-[220px_1fr]">
-          <nav className="flex gap-1 overflow-x-auto rounded-2xl border border-ink/10 bg-paper p-1.5 lg:flex-col lg:self-start" aria-label="Dashboard">
+        <div className="mt-8 grid gap-5 lg:grid-cols-[230px_minmax(0,1fr)] xl:grid-cols-[230px_minmax(0,1fr)_300px]">
+          <nav className="flex gap-1 overflow-x-auto rounded-3xl border border-ink/10 bg-paper p-2 lg:flex-col lg:self-start lg:p-3" aria-label="Dashboard">
+            <p className="hidden px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-faint lg:block">Dashboard</p>
             {TABS.map(([v, l, Icon]) => (
               <button key={v} onClick={() => go(v)} aria-current={tab === v ? 'page' : undefined}
-                className={`flex shrink-0 items-center gap-3 rounded-xl px-4 py-2.5 text-left text-[14px] font-medium transition ${tab === v ? 'bg-grass text-white' : 'text-ink hover:bg-grass/10'}`}>
+                className={`flex shrink-0 items-center gap-3 rounded-xl px-4 py-2.5 text-left text-[14px] font-medium transition ${tab === v ? 'bg-grass text-white shadow-sm shadow-grass/30' : 'text-muted hover:bg-grass/10 hover:text-ink'}`}>
                 <Icon className="h-[18px] w-[18px]" />{l}
+                {v === 'orders' && orders?.some(o => o.status === 'confirmed' && o.paymentStatus === 'unpaid') && <span className="ml-auto h-2 w-2 rounded-full bg-sun" aria-label="Payment due" />}
               </button>
             ))}
           </nav>
-          <div className="min-w-0">
+          <div className="min-w-0 overflow-hidden rounded-3xl border border-ink/10 bg-paper">
+            <FrameBar title={TABS.find(t => t[0] === tab)?.[1] || 'Overview'} unread={unread} onBell={() => openNotifications(markSeen)} onRefresh={() => setTick(t => t + 1)} />
+            <div className="p-5 md:p-6">
             {orders === null ? <Spinner /> : (
               <>
-                {tab === 'overview' && <Overview me={me} orders={orders} events={events} go={go} />}
+                {tab === 'overview' && <CustomerOverview me={me} orders={orders} go={go} banners={<>{!me.hasPassword && <SetPasswordNotice go={go} />}<WholesaleBanner me={me} go={go} /></>} />}
+                {tab === 'order' && <PlaceOrder me={me} />}
                 {tab === 'orders' && <Orders orders={orders} />}
                 {tab === 'history' && (
                   <div>
@@ -756,7 +875,9 @@ export default function Account() {
                 {tab === 'profile' && <Profile me={me} reload={reload} />}
               </>
             )}
+            </div>
           </div>
+          <div className="lg:col-span-2 xl:col-span-1"><SidePanel me={me} notes={notes} /></div>
         </div>
       </div>
     </Shell>
@@ -832,6 +953,8 @@ export function AccountOrder() {
               <div className="mt-8"><Progress status={order.status} /></div>
               {order.trackingNumber && <p className="mt-6 flex items-center gap-2 text-[14px] text-ink"><Truck className="h-4 w-4 text-muted" /> Tracking number: <b>{order.trackingNumber}</b></p>}
             </div>
+
+            <PayBox order={order} onPaid={() => accountApi(`/orders/${reference}`).then(setOrder)} />
 
             <div className="grid gap-6 md:grid-cols-2">
               <div className="rounded-2xl border border-ink/10 bg-paper p-6">

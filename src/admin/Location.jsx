@@ -15,7 +15,7 @@ const FIELDS = [
     ['email', 'Email', 'hello@farmora.com'],
     ['phone', 'Phone', '+234 801 234 5678'],
     ['phone2', 'Second phone (optional)', '+234 806 117 9288'],
-    ['whatsapp', 'WhatsApp (optional)', '+234 801 234 5678', 1, 'Shown as a WhatsApp chat link.'],
+    ['whatsapp', 'WhatsApp number', '+234 801 234 5678', 1, 'Used by the floating WhatsApp button on every page and the WhatsApp links. Include the country code, e.g. +234.'],
     ['hours', 'Opening hours', 'Mon – Sat · 8am – 6pm WAT'],
   ]],
   ['Social media', Share2, [

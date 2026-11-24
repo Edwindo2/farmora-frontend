@@ -27,7 +27,7 @@ function Gauge({ value }) {
   const r = 52, c = Math.PI * r, off = c * (1 - value / 100)
   return (
     <svg viewBox="0 0 120 70" className="absolute -bottom-2 right-3 h-24 w-36 opacity-90" aria-hidden="true">
-      <path d="M8 62a52 52 0 0 1 104 0" fill="none" stroke="rgba(255,255,255,.08)" strokeWidth="12" strokeLinecap="round" />
+      <path d="M8 62a52 52 0 0 1 104 0" fill="none" stroke="currentColor" strokeOpacity=".1" strokeWidth="12" strokeLinecap="round" className="text-ink" />
       <path d="M8 62a52 52 0 0 1 104 0" fill="none" stroke="#2f6d26" strokeWidth="12" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={off} style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(.16,1,.3,1)' }} />
       <line x1="60" y1="62" x2={60 + 40 * Math.cos(Math.PI * (1 - value / 100))} y2={62 - 40 * Math.sin(Math.PI * (1 - value / 100))} stroke="#c4f36a" strokeWidth="3" strokeLinecap="round" />
     </svg>
@@ -40,7 +40,7 @@ function Donut({ data, total }) {
   return (
     <div className="relative mx-auto h-[190px] w-[190px] shrink-0">
       <svg viewBox="0 0 180 180" className="-rotate-90">
-        <circle cx="90" cy="90" r={r} fill="none" stroke="rgba(255,255,255,.06)" strokeWidth="26" />
+        <circle cx="90" cy="90" r={r} fill="none" stroke="currentColor" strokeOpacity=".08" strokeWidth="26" className="text-ink" />
         {data.map((d, i) => {
           const len = total ? (d.units / total) * c : 0
           const el = <circle key={d.name} cx="90" cy="90" r={r} fill="none" stroke={DONUT[i % DONUT.length]} strokeWidth="26" strokeDasharray={`${Math.max(0, len - 3)} ${c}`} strokeDashoffset={-acc} style={{ transition: 'stroke-dasharray 1s' }} />
@@ -70,8 +70,8 @@ function AreaChart({ daily }) {
       <defs>
         <linearGradient id="area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#3fbf6a" stopOpacity=".55" /><stop offset="1" stopColor="#3fbf6a" stopOpacity="0" /></linearGradient>
       </defs>
-      {[0.25, 0.5, 0.75].map(f => <line key={f} x1="0" x2={W} y1={H * f} y2={H * f} stroke="rgba(255,255,255,.05)" />)}
-      {Array.from({ length: 10 }).map((_, i) => <line key={i} y1="0" y2={H} x1={(W / 10) * i} x2={(W / 10) * i} stroke="rgba(255,255,255,.04)" />)}
+      {[0.25, 0.5, 0.75].map(f => <line key={f} x1="0" x2={W} y1={H * f} y2={H * f} stroke="currentColor" strokeOpacity=".08" className="text-ink" />)}
+      {Array.from({ length: 10 }).map((_, i) => <line key={i} y1="0" y2={H} x1={(W / 10) * i} x2={(W / 10) * i} stroke="currentColor" strokeOpacity=".05" className="text-ink" />)}
       <path d={`${line} L${W},${H} L0,${H} Z`} fill="url(#area)" />
       <path d={line} fill="none" stroke="#3fbf6a" strokeWidth="2" />
       <circle cx={pts[peak][0]} cy={pts[peak][1]} r="4" fill="#c4f36a" stroke="var(--color-paper)" strokeWidth="2" />
@@ -170,16 +170,17 @@ export default function Dashboard() {
           </table>
         </div>
 
-        <div className="relative overflow-hidden rounded-2xl p-6">
+        <div className="relative overflow-hidden rounded-2xl p-6 text-white">
           <img src="/journey/1-bunch.jpg" alt="" className="absolute inset-0 h-full w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-br from-night/95 via-[#0f2a12]/85 to-[#1f5a1c]/70" />
           <div className="relative flex h-full flex-col">
             <span className="inline-flex w-fit items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[12px] backdrop-blur"><span className="grid h-5 w-5 place-items-center rounded-full bg-lime text-night"><Zap className="h-3 w-3" /></span>Needs attention</span>
             <div className="mt-6 flex items-end gap-4">
               <p className="text-[52px] font-semibold leading-none">{s.counts.received}</p>
-              <p className="border-l border-white/20 pl-4 text-[14px] leading-snug text-muted">New orders<br />awaiting confirmation</p>
+              <p className="border-l border-white/20 pl-4 text-[14px] leading-snug text-white/70">New orders<br />awaiting confirmation</p>
             </div>
-            <p className="mt-5 max-w-[22em] text-[14px] text-white/80">Confirm stock, set delivery fees and send payment details so customers can pay.</p>
+            <p className="mt-5 max-w-[22em] text-[14px] text-white/80">Confirm stock and set delivery fees so customers can pay online.</p>
+            {s.pendingApplications > 0 && <Link to={`${ADMIN}/customers`} className="mt-3 inline-flex w-fit items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-[12.5px] text-white hover:bg-white/20"><Icon name="customers" className="h-4 w-4" />{s.pendingApplications} distributor / wholesale application{s.pendingApplications > 1 ? 's' : ''} waiting</Link>}
             <div className="mt-auto flex items-center gap-3 pt-6">
               <Link to={`${ADMIN}/orders?status=received`} className="btn-micro flex-1 rounded-full bg-lime py-3 text-center text-[14px] font-medium text-night">Review orders</Link>
               <Link to={`${ADMIN}/messages`} className="grid h-11 w-11 place-items-center rounded-full bg-[#2f6d26] text-lime"><Icon name="messages" className="h-4 w-4" /></Link>

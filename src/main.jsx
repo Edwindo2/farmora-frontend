@@ -14,6 +14,7 @@ import { LoginPage, RegisterPage } from './pages/Auth.jsx'
 import Product from './pages/Product.jsx'
 import Invoice from './pages/Invoice.jsx'
 import { initTranslation } from './translate.jsx'
+import WhatsAppButton from './components/WhatsAppButton.jsx'
 import { installPlatform } from './platform.js'
 
 installPlatform() // app mode only: API calls go to the remote server with a token
@@ -70,6 +71,7 @@ createRoot(document.getElementById('root')).render(
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <WhatsAppButton />
       </CartProvider>
       </WishlistProvider>
       </AuthProvider>
