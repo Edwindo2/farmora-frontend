@@ -8,7 +8,7 @@ import { useAuth } from '../auth'
 import { LanguagePicker } from '../translate'
 import Social from './Social'
 
-// Farmora logo: the round emblem plus "FARMORA / Palm Oil". `light` = on a dark background.
+// Farmora logo: the round emblem plus "FARMORA / AgriTrade Limited". `light` = on a dark background.
 export function Logo({ light = false, className = '' }) {
   return (
     <Link to="/" onClick={() => window.scrollTo(0, 0)} translate="no" className={`notranslate flex shrink-0 items-center gap-2.5 ${className}`} aria-label="Farmora home">
@@ -17,7 +17,7 @@ export function Logo({ light = false, className = '' }) {
       </span>
       <span className="leading-none">
         <span className={`block font-display text-[21px] font-extrabold tracking-[-0.01em] md:text-[25px] ${light ? 'text-white' : 'text-ink'}`}>FARMORA<sup className="ml-0.5 text-[9px] font-semibold">™</sup></span>
-        <span className={`block font-display text-[15px] font-bold md:text-[18px] ${light ? 'text-white' : 'text-ruby'}`}>Palm Oil</span>
+        <span className={`block font-display text-[13px] font-bold md:text-[15px] ${light ? 'text-white' : 'text-ruby'}`}>AgriTrade Limited</span>
       </span>
     </Link>
   )
