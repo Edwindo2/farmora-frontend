@@ -8,7 +8,14 @@ import { WishButton } from '../wishlist'
 const tone = id => TONES[id] || 'from-[#e8641c] via-[#a8320a] to-[#4a1503]'
 
 // Buying in Nigeria (bulk quote) or from abroad (export quotation).
+// Signed-in customers can't switch: their currency comes from their account type.
 export function ModeToggle({ mode, setMode }) {
+  const { modeLocked } = useCart()
+  if (modeLocked) return (
+    <span className="inline-flex items-center gap-2 rounded-full border border-ink/15 px-4 py-2 text-[12px] text-muted">
+      Prices in <b className="text-ink">{mode === 'international' ? 'US dollars ($)' : 'Naira (₦)'}</b> for your account
+    </span>
+  )
   return (
     <div className="inline-flex rounded-full border border-ink/15 p-1 text-[12px]" role="radiogroup" aria-label="Where are you buying from?">
       {[

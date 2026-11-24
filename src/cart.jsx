@@ -22,7 +22,14 @@ export function CartProvider({ children }) {
   const { fx = {} } = useSite()
   const [products, setProducts] = useState([])
   const [loadError, setLoadError] = useState(false)
-  const [mode, setMode] = useState(saved?.mode || 'international') // 'local' (Nigeria, NGN) or 'international' (USD)
+  // 'local' (Nigeria, NGN) or 'international' (USD). Signed-in customers are fixed by account type:
+  // international accounts see USD, every other account (wholesale, distributor) sees NGN.
+  // Signed-out visitors can switch; they start in NGN.
+  const [guestMode, setGuestMode] = useState(saved?.mode || 'local')
+  const accountMode = me ? (me.accountType === 'international' ? 'international' : 'local') : null
+  const mode = accountMode || guestMode
+  const modeLocked = Boolean(accountMode)
+  const setMode = useCallback(m => { if (!accountMode) setGuestMode(m) }, [accountMode])
   const [cart, setCart] = useState([])
   const [ready, setReady] = useState(false)
   const [drawer, setDrawer] = useState(false)
@@ -34,8 +41,6 @@ export function CartProvider({ children }) {
   const wholesale = Boolean(tier)
   const priceKey = me === undefined ? null : tier || 'retail'
 
-  // International accounts start in USD mode
-  useEffect(() => { if (me?.accountType === 'international' && !saved?.mode) setMode('international') }, [me, saved])
 
   useEffect(() => {
     if (!priceKey) return // wait until we know who is signed in
@@ -74,9 +79,9 @@ export function CartProvider({ children }) {
   useEffect(() => {
     if (!ready) return
     try {
-      localStorage.setItem(KEY, JSON.stringify({ mode, items: cart.map(l => ({ productId: l.product.id, sizeId: l.size.id, qty: l.qty })) }))
+      localStorage.setItem(KEY, JSON.stringify({ mode: guestMode, items: cart.map(l => ({ productId: l.product.id, sizeId: l.size.id, qty: l.qty })) }))
     } catch { /* private mode */ }
-  }, [cart, mode, ready])
+  }, [cart, guestMode, ready])
 
   const setDisplayCurrency = useCallback(c => {
     setDisplayCurrencyState(c)
@@ -113,7 +118,7 @@ export function CartProvider({ children }) {
   const closeDrawer = useCallback(() => setDrawer(false), [])
 
   const value = {
-    products, loadError, ready, mode, setMode, cart, add, setQty, remove, clear,
+    products, loadError, ready, mode, setMode, modeLocked, cart, add, setQty, remove, clear,
     count: cart.reduce((s, l) => s + l.qty, 0),
     drawer, openDrawer, closeDrawer,
     wholesale, tier, price, currencies, displayCurrency: shownCurrency || 'USD', setDisplayCurrency,
